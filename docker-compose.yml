@@ -18,6 +18,7 @@ services:
       - NEO4J_DATABASE=${NEO4J_DATABASE-neo4j}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL-text-embedding-3-small}
       - LANGCHAIN_ENDPOINT=${LANGCHAIN_ENDPOINT-}
       - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2-}
       - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT-}
@@ -33,6 +34,7 @@ services:
       - GCS_FILE_CACHE=${GCS_FILE_CACHE-False}
 #      - LLM_MODEL_CONFIG_openai_gpt_4o='{"provider":"openai","model":"gpt-4o-2024-11-20","api_key":"${OPENAI_API_KEY}","base_url":"https://api.openai.com/v1"}'
       - LLM_MODEL_CONFIG_openai_gpt_4o_mini='{"provider":"openai","model":"gpt-4o-mini-2024-07-18","api_key":"${OPENAI_API_KEY}","base_url":"https://api.openai.com/v1"}'
+      - LLM_MODEL_CONFIG_openai_gpt_5_mini='{"provider":"openai","model":"gpt-5-mini","api_key":"${OPENAI_API_KEY}","base_url":"https://api.openai.com/v1"}'
 #      - LLM_MODEL_CONFIG_anthropic_claude_35_sonnet=${LLM_MODEL_CONFIG_anthropic_claude_35_sonnet-}
 #      - LLM_MODEL_CONFIG_fireworks_llama_v3_70b=${LLM_MODEL_CONFIG_fireworks_llama_v3_70b-}
 #      - LLM_MODEL_CONFIG_azure_ai_gpt_4o=${LLM_MODEL_CONFIG_azure_ai_gpt_4o-}

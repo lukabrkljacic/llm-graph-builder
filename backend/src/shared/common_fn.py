@@ -71,9 +71,19 @@ def create_graph_database_connection(uri, userName, password, database):
 
 def load_embedding_model(embedding_model_name: str):
     if embedding_model_name == "openai":
-        embeddings = OpenAIEmbeddings()
-        dimension = 1536
-        logging.info(f"Embedding: Using OpenAI Embeddings , Dimension:{dimension}")
+        openai_embedding_model = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+        embeddings = OpenAIEmbeddings(model=openai_embedding_model)
+        dimension_lookup = {
+            "text-embedding-3-large": 3072,
+            "text-embedding-3-small": 1536,
+            "text-embedding-3-base": 1536,
+        }
+        dimension = dimension_lookup.get(openai_embedding_model, 1536)
+        logging.info(
+            "Embedding: Using OpenAI Embeddings '%s' , Dimension:%s",
+            openai_embedding_model,
+            dimension,
+        )
     elif embedding_model_name == "vertexai":        
         embeddings = VertexAIEmbeddings(
             model="textembedding-gecko@003"

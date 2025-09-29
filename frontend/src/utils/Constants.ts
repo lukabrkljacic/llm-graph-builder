@@ -14,6 +14,7 @@ export const llms =
     : [
         'openai_gpt_4o',
         'openai_gpt_4o_mini',
+        'openai_gpt_5_mini',
         'openai_gpt_4.1',
         'openai_gpt_4.1_mini',
         'openai_gpt_o3_mini',
@@ -44,6 +45,7 @@ export const supportedLLmsForRagas = [
   'openai_gpt_4',
   'openai_gpt_4o',
   'openai_gpt_4o_mini',
+  'openai_gpt_5_mini',
   'openai_gpt_4.1',
   'openai_gpt_4.1_mini',
   'gemini_1.5_pro',
@@ -65,6 +67,7 @@ export const supportedLLmsForGroundTruthMetrics = [
   'openai_gpt_4',
   'openai_gpt_4o',
   'openai_gpt_4o_mini',
+  'openai_gpt_5_mini',
   'openai_gpt_4.1',
   'openai_gpt_4.1_mini',
   'azure_ai_gpt_35',
@@ -81,7 +84,7 @@ export const supportedLLmsForGroundTruthMetrics = [
 export const prodllms =
   process.env.VITE_LLM_MODELS_PROD?.trim() != ''
     ? (process.env.VITE_LLM_MODELS_PROD?.split(',') as string[])
-    : ['openai_gpt_4o', 'openai_gpt_4o_mini', 'diffbot', 'gemini_2.0_flash'];
+    : ['openai_gpt_4o', 'openai_gpt_4o_mini', 'openai_gpt_5_mini', 'diffbot', 'gemini_2.0_flash'];
 
 export const chatModeLables = {
   vector: 'vector',
@@ -187,7 +190,7 @@ export const tooltips = {
   predinedSchema: 'Predefined Schema',
   dataImporterJson: 'Data Importer JSON',
 };
-export const PRODMODLES = ['openai_gpt_4o', 'openai_gpt_4o_mini', 'diffbot', 'gemini_1.5_flash'];
+export const PRODMODLES = ['openai_gpt_4o', 'openai_gpt_4o_mini', 'openai_gpt_5_mini', 'diffbot', 'gemini_1.5_flash'];
 export const buttonCaptions = {
   exploreGraphWithBloom: 'Explore Graph',
   showPreviewGraph: 'Preview Graph',

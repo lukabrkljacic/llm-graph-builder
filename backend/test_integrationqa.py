@@ -197,7 +197,7 @@ def run_tests():
    chatbot_list = []
    chatbot_error_list = []
    other_api_list = []
-   models = ['openai_gpt_4o','openai_gpt_4o_mini','openai_gpt_4.1','openai_gpt_4.1_mini','gemini_2.0_flash','fireworks_llama4_maverick','bedrock_nova_pro_v1']
+   models = ['openai_gpt_4o','openai_gpt_4o_mini','openai_gpt_5_mini', 'openai_gpt_4.1','openai_gpt_4.1_mini','gemini_2.0_flash','fireworks_llama4_maverick','bedrock_nova_pro_v1']
    chatbot_modes = [
        "vector",
        "graph+vector",

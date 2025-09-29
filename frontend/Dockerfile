@@ -3,7 +3,7 @@ FROM node:20 AS build
 
 ARG VITE_BACKEND_API_URL="http://localhost:8000"
 ARG VITE_REACT_APP_SOURCES=""
-ARG VITE_LLM_MODELS=""
+ARG VITE_LLM_MODELS="openai_gpt_4o_mini"
 ARG VITE_GOOGLE_CLIENT_ID=""
 ARG VITE_BLOOM_URL="https://workspace-preview.neo4j.io/workspace/explore?connectURL={CONNECT_URL}&search=Show+me+a+graph&featureGenAISuggestions=true&featureGenAISuggestionsInternal=true"
 ARG VITE_TIME_PER_PAGE=50
@@ -12,7 +12,7 @@ ARG VITE_CHUNK_SIZE=5242880
 ARG VITE_CHAT_MODES=""
 ARG VITE_ENV="DEV"
 ARG VITE_BATCH_SIZE=2
-ARG VITE_LLM_MODELS_PROD="openai_gpt_4o,openai_gpt_4o_mini,diffbot,gemini_1.5_flash"
+ARG VITE_LLM_MODELS_PROD="openai_gpt_4o,openai_gpt_4o_mini,openai_gpt_5_mini,diffbot,gemini_1.5_flash"
 ARG VITE_AUTH0_CLIENT_ID=""
 ARG VITE_AUTH0_DOMAIN=""
 ARG VITE_SKIP_AUTH="false"

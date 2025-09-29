@@ -31,7 +31,7 @@ services:
       - NUMBER_OF_CHUNKS_TO_COMBINE=${NUMBER_OF_CHUNKS_TO_COMBINE-6}
       - ENTITY_EMBEDDING=${ENTITY_EMBEDDING-False}
       - GCS_FILE_CACHE=${GCS_FILE_CACHE-False}
-      - LLM_MODEL_CONFIG_openai_gpt_4o='{"provider":"openai","model":"gpt-4o-2024-11-20","api_key":"${OPENAI_API_KEY}","base_url":"https://api.openai.com/v1"}'
+#      - LLM_MODEL_CONFIG_openai_gpt_4o='{"provider":"openai","model":"gpt-4o-2024-11-20","api_key":"${OPENAI_API_KEY}","base_url":"https://api.openai.com/v1"}'
       - LLM_MODEL_CONFIG_openai_gpt_4o_mini='{"provider":"openai","model":"gpt-4o-mini-2024-07-18","api_key":"${OPENAI_API_KEY}","base_url":"https://api.openai.com/v1"}'
 #      - LLM_MODEL_CONFIG_anthropic_claude_35_sonnet=${LLM_MODEL_CONFIG_anthropic_claude_35_sonnet-}
 #      - LLM_MODEL_CONFIG_fireworks_llama_v3_70b=${LLM_MODEL_CONFIG_fireworks_llama_v3_70b-}
@@ -40,7 +40,7 @@ services:
 #      - LLM_MODEL_CONFIG_groq_llama3_70b=${LLM_MODEL_CONFIG_groq_llama3_70b-}
 #      - LLM_MODEL_CONFIG_bedrock_claude_3_5_sonnet=${LLM_MODEL_CONFIG_bedrock_claude_3_5_sonnet-}
 #     - LLM_MODEL_CONFIG_fireworks_qwen_72b=${LLM_MODEL_CONFIG_fireworks_qwen_72b-}
-      - LLM_MODEL_CONFIG_ollama_llama3=${LLM_MODEL_CONFIG_ollama_llama3-}
+#      - LLM_MODEL_CONFIG_ollama_llama3=${LLM_MODEL_CONFIG_ollama_llama3-}
       - GUNICORN_CMD_ARGS=--workers=1 --threads=4 --timeout=120
     # container_name: backend
     # extra_hosts:
@@ -67,8 +67,8 @@ services:
         - VITE_ENV=${VITE_ENV-DEV}
         - VITE_CHAT_MODES=${VITE_CHAT_MODES-}
         - VITE_BATCH_SIZE=${VITE_BATCH_SIZE-2}
-        - VITE_LLM_MODELS=${VITE_LLM_MODELS-}
-        - VITE_LLM_MODELS_PROD=${VITE_LLM_MODELS_PROD-openai_gpt_5_mini,openai_gpt_4o_mini,diffbot,gemini_1.5_flash}
+        - VITE_LLM_MODELS=${VITE_LLM_MODELS-openai_gpt_4o_mini}
+        - VITE_LLM_MODELS_PROD=${VITE_LLM_MODELS_PROD-openai_gpt_4o_mini}
         - VITE_AUTH0_DOMAIN=${VITE_AUTH0_DOMAIN-}
         - VITE_AUTH0_CLIENT_ID=${VITE_AUTH0_CLIENT_ID-}
         - VITE_SKIP_AUTH=${VITE_SKIP_AUTH-true}

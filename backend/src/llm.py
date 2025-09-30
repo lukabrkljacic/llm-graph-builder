@@ -17,6 +17,7 @@ from src.shared.constants import ADDITIONAL_INSTRUCTIONS
 from src.shared.llm_graph_builder_exception import LLMGraphBuilderException
 import re
 from typing import List
+import json
 
 def get_llm(model: str):
     """Retrieve the specified language model based on the model name."""
@@ -30,6 +31,31 @@ def get_llm(model: str):
         raise Exception(err)
     
     logging.info("Model: {}".format(env_key))
+
+    env_value_stripped = env_value.strip()
+    # If the whole value is wrapped in one pair of quotes, strip them.
+    if (env_value_stripped.startswith('"') and env_value_stripped.endswith('"')) or (env_value_stripped.startswith("'") and env_value_stripped.endswith("'")):
+        env_value_stripped = env_value_stripped[1:-1].strip()
+    # Some users accidentally use single quotes inside the JSON like {'a':'b'}.
+    # Replace them conservatively if we detect that pattern.
+    if env_value_stripped.startswith("{'") and env_value_stripped.endswith("'}") and '"' not in env_value_stripped:
+        env_value_stripped = env_value_stripped.replace("'", '"')
+
+    try:
+        env_value_parsed = json.loads(env_value_stripped)
+        logging.info("PARSED: %s", env_value_parsed)
+    except json.JSONDecodeError as e:
+        # Helpful debug without leaking secrets: show length and first/last 40 chars
+        head = env_value_stripped[:40]
+        tail = env_value_stripped[-40:]
+        raise ValueError(
+            f"Failed to parse JSON from '{env_key}'. "
+            f"Length={len(env_value_stripped)}. Starts with: {head!r} ... ends with: {tail!r}. "
+            f"Original error: {e}"
+        ) from e
+    if not isinstance(env_value_parsed, dict):
+        raise TypeError(f"Value of '{env_key}' must be a JSON object, got {type(env_value_parsed).__name__}")
+
     try:
         if "gemini" in model:
             model_name = env_value
@@ -49,17 +75,20 @@ def get_llm(model: str):
                 },
             )
         elif "openai" in model:
-            model_name, api_key = env_value.split(",")
-            if "o3-mini" in model:
-                llm= ChatOpenAI(
-                api_key=api_key,
-                model=model_name)
-            else:
-                llm = ChatOpenAI(
-                api_key=api_key,
-                model=model_name,
-                temperature=0,
+            parts = [part.strip() for part in env_value.split(",") if part.strip()]
+            if len(parts) < 2:
+                raise ValueError(
+                    "OpenAI model configuration must include at least model name and API key"
                 )
+
+            model_name = env_value_parsed['model']
+            api_key = env_value_parsed['api_key']
+            additional_kwargs = {"api_key": api_key, "model": model_name}
+
+            if "o3-mini" in model:
+                llm = ChatOpenAI(**additional_kwargs)
+            else:
+                llm = ChatOpenAI(temperature=0, **additional_kwargs)
 
         elif "azure" in model:
             model_name, api_endpoint, api_key, api_version = env_value.split(",")

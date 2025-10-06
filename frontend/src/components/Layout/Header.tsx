@@ -1,4 +1,4 @@
-import CustomLogo from '../../assets/images/custom_logo.png';
+import CustomLogo from '../../assets/custom_logo.png';
 import {
   MoonIconOutline,
   SunIconOutline,

@@ -88,7 +88,7 @@ def get_llm(model: str):
             if "o3-mini" in model:
                 llm = ChatOpenAI(**additional_kwargs)
             else:
-                llm = ChatOpenAI(temperature=0, **additional_kwargs)
+                llm = ChatOpenAI(temperature=1, **additional_kwargs)
 
         elif "azure" in model:
             model_name, api_endpoint, api_key, api_version = env_value.split(",")
@@ -147,7 +147,7 @@ def get_llm(model: str):
                 api_key=api_key,
                 base_url=api_endpoint,
                 model=model_name,
-                temperature=0,
+                temperature=1,
             )
     except Exception as e:
         err = f"Error while creating LLM '{model}': {str(e)}"

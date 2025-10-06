@@ -1,5 +1,4 @@
-import Neo4jLogoBW from '../../logo.svg';
-import Neo4jLogoColor from '../../logo-color.svg';
+import CustomLogo from '../../assets/images/custom_logo.png';
 import {
   MoonIconOutline,
   SunIconOutline,
@@ -88,11 +87,7 @@ const Header: React.FC<HeaderProp> = ({ chatOnly, deleteOnClick, setOpenConnecti
         >
           <section className='flex w-1/3 shrink-0 grow-0 items-center min-w-[200px]'>
             <Typography variant='h1'>
-              <img
-                src={colorMode === 'dark' ? Neo4jLogoBW : Neo4jLogoColor}
-                className='h-8! min-h-8 min-w-8'
-                alt='Neo4j Logo'
-              />
+              <img src={CustomLogo} className='h-8! min-h-8 min-w-8' alt='Application Logo' />
             </Typography>
           </section>
           {!chatOnly ? (

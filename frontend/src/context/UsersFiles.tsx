@@ -20,13 +20,17 @@ import {
 } from '../utils/Constants';
 import { useCredentials } from './UserCredentials';
 import Queue from '../utils/Queue';
+import { updateLocalStorage } from '../utils/Utils';
+import {
+  outputMarkdownNodeOptions,
+  outputMarkdownRelationshipOptions,
+  outputMarkdownSelectedSchemaOptions,
+} from '../utils/outputMarkdownSchema';
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
 
 const FileContextProvider: FC<FileContextProviderProps> = ({ children }) => {
   const isProdEnv = process.env.VITE_ENV === 'PROD';
-  const selectedNodeLabelstr = localStorage.getItem('selectedNodeLabels');
-  const selectedNodeRelsstr = localStorage.getItem('selectedRelationshipLabels');
   const selectedTokenChunkSizeStr = localStorage.getItem('selectedTokenChunkSize');
   const selectedChunk_overlapStr = localStorage.getItem('selectedChunk_overlap');
   const selectedChunks_to_combineStr = localStorage.getItem('selectedChunks_to_combine');
@@ -42,12 +46,18 @@ const FileContextProvider: FC<FileContextProviderProps> = ({ children }) => {
   );
   const [model, setModel] = useState<string>(isProdDefaultModel ? selectedModel : isProdEnv ? PRODMODLES[0] : llms[0]);
   const [graphType, setGraphType] = useState<string>('Knowledge Graph Entities');
-  const [selectedNodes, setSelectedNodes] = useState<readonly OptionType[]>([]);
-  const [selectedRels, setSelectedRels] = useState<readonly OptionType[]>([]);
+  const [selectedNodes, setSelectedNodes] = useState<readonly OptionType[]>(() =>
+    outputMarkdownNodeOptions.length ? Array.from(outputMarkdownNodeOptions) : []
+  );
+  const [selectedRels, setSelectedRels] = useState<readonly OptionType[]>(() =>
+    outputMarkdownRelationshipOptions.length ? Array.from(outputMarkdownRelationshipOptions) : []
+  );
   const [selectedTokenChunkSize, setSelectedTokenChunkSize] = useState<number>(tokenchunkSize);
   const [selectedChunk_overlap, setSelectedChunk_overlap] = useState<number>(chunkOverlap);
   const [selectedChunks_to_combine, setSelectedChunks_to_combine] = useState<number>(chunksToCombine);
-  const [selectedSchemas, setSelectedSchemas] = useState<readonly OptionType[]>(getStoredSchema);
+  const [selectedSchemas, setSelectedSchemas] = useState<readonly OptionType[]>(() =>
+    getStoredSchema(Array.from(outputMarkdownSelectedSchemaOptions))
+  );
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [chatModes, setchatModes] = useState<string[]>([chatModeLables['graph+vector+fulltext']]);
@@ -81,7 +91,15 @@ const FileContextProvider: FC<FileContextProviderProps> = ({ children }) => {
   const [postProcessingVal, setPostProcessingVal] = useState<boolean>(false);
   const [additionalInstructions, setAdditionalInstructions] = useState<string>('');
   const [schemaTextPattern, setSchemaTextPattern] = useState<string[]>([]);
-  const [allPatterns, setAllPatterns] = useState<string[]>([]);
+  const [allPatterns, setAllPatterns] = useState<string[]>(() => {
+    if (!outputMarkdownRelationshipOptions.length) {
+      return [];
+    }
+    return Array.from(outputMarkdownRelationshipOptions).map((rel) => {
+      const [source, type, target] = rel.value.split(',');
+      return `(${source})-[${type}]->(${target})`;
+    });
+  });
   const [userDefinedPattern, setUserDefinedPattern] = useState<string[]>([]);
   const [dbPattern, setDbPattern] = useState<string[]>([]);
   const [schemaValNodes, setSchemaValNodes] = useState<OptionType[]>([]);
@@ -104,30 +122,97 @@ const FileContextProvider: FC<FileContextProviderProps> = ({ children }) => {
   const [importerPattern, setImporterPattern] = useState<string[]>([]);
 
   useEffect(() => {
-    if (selectedNodeLabelstr != null) {
-      const selectedNodeLabel = JSON.parse(selectedNodeLabelstr);
-      if (userCredentials?.uri === selectedNodeLabel.db) {
-        setSelectedNodes(selectedNodeLabel.selectedOptions);
-      }
+    if (!userCredentials) {
+      return;
     }
-    if (selectedNodeRelsstr != null) {
-      const selectedNodeRels = JSON.parse(selectedNodeRelsstr);
-      if (userCredentials?.uri === selectedNodeRels.db) {
-        setSelectedRels(selectedNodeRels.selectedOptions);
+
+    const applyDefaultNodes = () => {
+      if (!outputMarkdownNodeOptions.length) {
+        setSelectedNodes([]);
+        return;
       }
+      const defaultNodes = Array.from(outputMarkdownNodeOptions);
+      setSelectedNodes(defaultNodes);
+      updateLocalStorage(userCredentials, 'selectedNodeLabels', defaultNodes);
+    };
+
+    const applyDefaultRelationships = () => {
+      if (!outputMarkdownRelationshipOptions.length) {
+        setSelectedRels([]);
+        setAllPatterns([]);
+        updateLocalStorage(userCredentials, 'selectedRelationshipLabels', []);
+        updateLocalStorage(userCredentials, 'selectedPattern', []);
+        return;
+      }
+      const defaultRels = Array.from(outputMarkdownRelationshipOptions);
+      setSelectedRels(defaultRels);
+      const generatedPatterns = defaultRels.map((rel) => {
+        const [source, type, target] = rel.value.split(',');
+        return `(${source})-[${type}]->(${target})`;
+      });
+      setAllPatterns(generatedPatterns);
+      updateLocalStorage(userCredentials, 'selectedRelationshipLabels', defaultRels);
+      updateLocalStorage(userCredentials, 'selectedPattern', generatedPatterns);
+    };
+
+    const storedNodeLabels = localStorage.getItem('selectedNodeLabels');
+    if (storedNodeLabels) {
+      const parsedNodeLabels = JSON.parse(storedNodeLabels);
+      if (
+        parsedNodeLabels?.db === userCredentials.uri &&
+        Array.isArray(parsedNodeLabels.selectedOptions) &&
+        parsedNodeLabels.selectedOptions.length > 0
+      ) {
+        setSelectedNodes(parsedNodeLabels.selectedOptions);
+      } else {
+        applyDefaultNodes();
+      }
+    } else {
+      applyDefaultNodes();
     }
-    if (selectedNodeRelsstr != null) {
-      const selectedNodeRels = JSON.parse(selectedNodeRelsstr);
-      if (userCredentials?.uri === selectedNodeRels.db) {
-        const rels = selectedNodeRels.selectedOptions;
+
+    const storedRelationshipLabels = localStorage.getItem('selectedRelationshipLabels');
+    if (storedRelationshipLabels) {
+      const parsedRelationshipLabels = JSON.parse(storedRelationshipLabels);
+      if (
+        parsedRelationshipLabels?.db === userCredentials.uri &&
+        Array.isArray(parsedRelationshipLabels.selectedOptions) &&
+        parsedRelationshipLabels.selectedOptions.length > 0
+      ) {
+        const rels = parsedRelationshipLabels.selectedOptions;
         setSelectedRels(rels);
         const generatedPatterns = rels.map((rel: { value: string }) => {
           const [source, type, target] = rel.value.split(',');
           return `(${source})-[${type}]->(${target})`;
         });
         setAllPatterns(generatedPatterns);
+      } else {
+        applyDefaultRelationships();
       }
+    } else {
+      applyDefaultRelationships();
     }
+
+    const storedSchemas = localStorage.getItem('selectedSchemas');
+    if (storedSchemas) {
+      const parsedSchemas = JSON.parse(storedSchemas);
+      if (
+        parsedSchemas?.db === userCredentials.uri &&
+        Array.isArray(parsedSchemas.selectedOptions) &&
+        parsedSchemas.selectedOptions.length > 0
+      ) {
+        setSelectedSchemas(parsedSchemas.selectedOptions);
+      } else if (outputMarkdownSelectedSchemaOptions.length) {
+        const schemaSelection = Array.from(outputMarkdownSelectedSchemaOptions);
+        setSelectedSchemas(schemaSelection);
+        updateLocalStorage(userCredentials, 'selectedSchemas', schemaSelection);
+      }
+    } else if (outputMarkdownSelectedSchemaOptions.length) {
+      const schemaSelection = Array.from(outputMarkdownSelectedSchemaOptions);
+      setSelectedSchemas(schemaSelection);
+      updateLocalStorage(userCredentials, 'selectedSchemas', schemaSelection);
+    }
+
     if (selectedTokenChunkSizeStr != null) {
       const parsedSelectedChunk_size = JSON.parse(selectedTokenChunkSizeStr);
       setSelectedTokenChunkSize(parsedSelectedChunk_size.selectedOption);
@@ -144,7 +229,16 @@ const FileContextProvider: FC<FileContextProviderProps> = ({ children }) => {
       const selectedInstructions = selectedInstructstr;
       setAdditionalInstructions(selectedInstructions);
     }
-  }, [userCredentials]);
+  }, [
+    userCredentials,
+    outputMarkdownNodeOptions,
+    outputMarkdownRelationshipOptions,
+    outputMarkdownSelectedSchemaOptions,
+    selectedTokenChunkSizeStr,
+    selectedChunk_overlapStr,
+    selectedChunks_to_combineStr,
+    selectedInstructstr,
+  ]);
 
   const value: FileContextType = {
     files,

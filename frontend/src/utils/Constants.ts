@@ -401,13 +401,13 @@ export function mergeNestedObjects(objects: Record<string, Record<string, number
     return merged;
   }, {});
 }
-export function getStoredSchema() {
+export function getStoredSchema(defaultSchemas: readonly OptionType[] = []) {
   const storedSchemas = localStorage.getItem('selectedSchemas');
   if (storedSchemas) {
     const parsedSchemas = JSON.parse(storedSchemas);
     return parsedSchemas.selectedOptions;
   }
-  return [];
+  return defaultSchemas;
 }
 export const metricsinfo: Record<string, string> = {
   faithfulness: 'Determines How accurately the answer reflects the provided information',

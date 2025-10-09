@@ -1,5 +1,29 @@
 [
   {
+    "schema": "output_markdown",
+    "triplet": [
+      "Project-HAS_DIRECTOR->Person",
+      "Project-SERVES_END_USER->Organization",
+      "Project-HAS_PIC->Person",
+      "Project-COLLABORATES_WITH->Person",
+      "Project-COLLABORATES_WITH->Organization",
+      "Project-HAS_TEAM->Team",
+      "Team-INCLUDES_MEMBER->Person",
+      "Project-HAS_OBJECTIVE->Objective",
+      "Project-PURSUING_TARGET->Deliverable",
+      "Project-DELIVERS_CAPABILITY->Capability",
+      "Project-RECENT_ACHIEVEMENT->Achievement",
+      "Project-FACES_CHALLENGE->Challenge",
+      "Project-USES_DATATYPE->DataType",
+      "Project-APPLIES_TECHNIQUE->Technique",
+      "Project-ENABLES_USE_CASE->UseCase",
+      "Project-ALIGNS_WITH_DOMAIN->Domain",
+      "Project-HAS_MILESTONE->Milestone",
+      "Milestone-FOCUSES_ON->Deliverable"
+    ]
+  },
+
+  {
     "schema": "crime",
     "triplet": [
       "PhoneCall-CALLED->Phone",

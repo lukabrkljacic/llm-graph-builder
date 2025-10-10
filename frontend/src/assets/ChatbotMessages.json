@@ -4,7 +4,7 @@
       "id": 2,
       "modes":{
         "graph+vector+fulltext":{
-          "message": " Welcome to the Neo4j Knowledge Graph Chat. You can ask questions related to documents which have been completely processed."
+          "message": " Welcome to the 99p Knowledge Graph Chat! You can ask questions related to documents which have been completely processed."
         }
       },
       "user": "chatbot",

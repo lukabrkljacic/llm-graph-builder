@@ -13,7 +13,7 @@ import {
   SpotlightTarget,
 } from '@neo4j-ndl/react';
 import { ArrowDownTrayIconOutline, XMarkIconOutline } from '@neo4j-ndl/react/icons';
-import ChatBotAvatar from '../../assets/images/chatbot-ai.png';
+import ChatBotAvatar from '../../assets/images/99p_chatbot_icon.png';
 import {
   ChatbotProps,
   Chunk,

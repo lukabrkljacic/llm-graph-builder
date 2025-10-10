@@ -174,5 +174,5 @@ newenv
 files
 startupbackend.sh
 startupfrontend.sh
-/preprocessing/input_data/
+/preprocessing/input_*/
 /preprocessing/output_*/

@@ -3,6 +3,10 @@ import { GraphType, OptionType, PatternOption } from '../types';
 import { getDateTime, getDescriptionForChatMode } from './Utils';
 import chatbotmessages from '../assets/ChatbotMessages.json';
 import schemaExamples from '../assets/newSchema.json';
+import {
+  OUTPUT_MARKDOWN_SCHEMA_DISPLAY_NAME,
+  OUTPUT_MARKDOWN_SCHEMA_NAME,
+} from './outputMarkdownSchema';
 export const APP_SOURCES =
   process.env.VITE_REACT_APP_SOURCES !== ''
     ? (process.env.VITE_REACT_APP_SOURCES?.split(',') as string[])
@@ -381,9 +385,19 @@ export const LLMDropdownLabel = {
   disabledModels: 'Disabled models are available in the development version. Access more models in our ',
   devEnv: 'development environment',
 };
+const formatSchemaLabel = (schemaName: string) => {
+  if (schemaName === OUTPUT_MARKDOWN_SCHEMA_NAME) {
+    return OUTPUT_MARKDOWN_SCHEMA_DISPLAY_NAME;
+  }
+  return schemaName
+    .split('_')
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+};
+
 export const getDefaultSchemaExamples = () => {
   return schemaExamples.map((example) => ({
-    label: example.schema,
+    label: formatSchemaLabel(example.schema),
     value: JSON.stringify(example.triplet),
   }));
 };
@@ -404,8 +418,14 @@ export function mergeNestedObjects(objects: Record<string, Record<string, number
 export function getStoredSchema(defaultSchemas: readonly OptionType[] = []) {
   const storedSchemas = localStorage.getItem('selectedSchemas');
   if (storedSchemas) {
-    const parsedSchemas = JSON.parse(storedSchemas);
-    return parsedSchemas.selectedOptions;
+    try {
+      const parsedSchemas = JSON.parse(storedSchemas);
+      if (Array.isArray(parsedSchemas?.selectedOptions) && parsedSchemas.selectedOptions.length > 0) {
+        return parsedSchemas.selectedOptions;
+      }
+    } catch (error) {
+      console.error('Failed to parse stored schemas from localStorage', error);
+    }
   }
   return defaultSchemas;
 }

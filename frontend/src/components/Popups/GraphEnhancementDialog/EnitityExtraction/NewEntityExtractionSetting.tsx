@@ -17,6 +17,7 @@ import {
   deduplicateNodeByValue,
 } from '../../../../utils/Utils';
 import TooltipWrapper from '../../../UI/TipWrapper';
+import { OUTPUT_MARKDOWN_SCHEMA_VERSION_KEY } from '../../../../utils/outputMarkdownSchema';
 
 export default function NewEntityExtractionSetting({
   view,
@@ -127,6 +128,7 @@ export default function NewEntityExtractionSetting({
     updateLocalStorage(userCredentials!, 'selectedNodeLabels', []);
     updateLocalStorage(userCredentials!, 'selectedRelationshipLabels', []);
     updateLocalStorage(userCredentials!, 'selectedPattern', []);
+    localStorage.removeItem(OUTPUT_MARKDOWN_SCHEMA_VERSION_KEY);
     showNormalToast(`Successfully Removed the Schema settings`);
     // Importer clear
     setImporterNodes([]);

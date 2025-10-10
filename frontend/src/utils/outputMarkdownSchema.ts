@@ -2,6 +2,9 @@ import schemaExamples from '../assets/newSchema.json';
 import { OptionType } from '../types';
 
 const OUTPUT_MARKDOWN_SCHEMA_KEY = 'output_markdown';
+export const OUTPUT_MARKDOWN_SCHEMA_DISPLAY_NAME = 'Output Markdown (99P Projects)';
+export const OUTPUT_MARKDOWN_SCHEMA_VERSION = '1';
+export const OUTPUT_MARKDOWN_SCHEMA_VERSION_KEY = 'outputMarkdownSchemaVersion';
 
 type SchemaExample = {
   schema: string;
@@ -69,7 +72,7 @@ const patternStrings = relationshipOptions.map((option) => option.label);
 
 const schemaOption: OptionType | null = outputMarkdownSchema
   ? {
-      label: outputMarkdownSchema.schema,
+      label: OUTPUT_MARKDOWN_SCHEMA_DISPLAY_NAME,
       value: JSON.stringify(outputMarkdownSchema.triplet),
     }
   : null;

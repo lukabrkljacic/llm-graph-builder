@@ -22,8 +22,13 @@ import { useCredentials } from './UserCredentials';
 import Queue from '../utils/Queue';
 import { updateLocalStorage } from '../utils/Utils';
 import {
+  OUTPUT_MARKDOWN_SCHEMA_VERSION,
+  OUTPUT_MARKDOWN_SCHEMA_VERSION_KEY,
+  hasOutputMarkdownSchema,
   outputMarkdownNodeOptions,
+  outputMarkdownPatterns,
   outputMarkdownRelationshipOptions,
+  outputMarkdownSchemaOption,
   outputMarkdownSelectedSchemaOptions,
 } from '../utils/outputMarkdownSchema';
 
@@ -106,12 +111,20 @@ const FileContextProvider: FC<FileContextProviderProps> = ({ children }) => {
   const [schemaValRels, setSchemaValRels] = useState<OptionType[]>([]);
   const [dbNodes, setDbNodes] = useState<OptionType[]>([]);
   const [dbRels, setDbRels] = useState<OptionType[]>([]);
-  const [preDefinedNodes, setPreDefinedNodes] = useState<OptionType[]>([]);
-  const [preDefinedRels, setPreDefinedRels] = useState<OptionType[]>([]);
+  const [preDefinedNodes, setPreDefinedNodes] = useState<OptionType[]>(() =>
+    outputMarkdownNodeOptions.length ? Array.from(outputMarkdownNodeOptions) : []
+  );
+  const [preDefinedRels, setPreDefinedRels] = useState<OptionType[]>(() =>
+    outputMarkdownRelationshipOptions.length ? Array.from(outputMarkdownRelationshipOptions) : []
+  );
   const [userDefinedNodes, setUserDefinedNodes] = useState<OptionType[]>([]);
   const [userDefinedRels, setUserDefinedRels] = useState<OptionType[]>([]);
-  const [preDefinedPattern, setPreDefinedPattern] = useState<string[]>([]);
-  const [selectedPreDefOption, setSelectedPreDefOption] = useState<OptionType | null>(null);
+  const [preDefinedPattern, setPreDefinedPattern] = useState<string[]>(() =>
+    outputMarkdownPatterns.length ? Array.from(outputMarkdownPatterns) : []
+  );
+  const [selectedPreDefOption, setSelectedPreDefOption] = useState<OptionType | null>(() =>
+    outputMarkdownSchemaOption ? { ...outputMarkdownSchemaOption } : null
+  );
   const [sourceOptions, setSourceOptions] = useState<OptionType[]>([]);
   const [typeOptions, setTypeOptions] = useState<OptionType[]>([]);
   const [targetOptions, setTargetOptions] = useState<OptionType[]>([]);
@@ -126,91 +139,157 @@ const FileContextProvider: FC<FileContextProviderProps> = ({ children }) => {
       return;
     }
 
+    const defaultNodeOptions = Array.from(outputMarkdownNodeOptions);
+    const defaultRelationshipOptions = Array.from(outputMarkdownRelationshipOptions);
+    const defaultPatternList =
+      outputMarkdownPatterns.length > 0
+        ? Array.from(outputMarkdownPatterns)
+        : defaultRelationshipOptions.map((rel) => {
+            const [source, type, target] = rel.value.split(',');
+            return `(${source})-[${type}]->(${target})`;
+          });
+    const defaultSchemaSelection = Array.from(outputMarkdownSelectedSchemaOptions);
+    const defaultPredefinedOption = outputMarkdownSchemaOption ? { ...outputMarkdownSchemaOption } : null;
+
+    let defaultsApplied = false;
+
     const applyDefaultNodes = () => {
-      if (!outputMarkdownNodeOptions.length) {
+      if (!defaultNodeOptions.length) {
         setSelectedNodes([]);
+        updateLocalStorage(userCredentials, 'selectedNodeLabels', []);
         return;
       }
-      const defaultNodes = Array.from(outputMarkdownNodeOptions);
-      setSelectedNodes(defaultNodes);
-      updateLocalStorage(userCredentials, 'selectedNodeLabels', defaultNodes);
+      setSelectedNodes(defaultNodeOptions);
+      updateLocalStorage(userCredentials, 'selectedNodeLabels', defaultNodeOptions);
     };
 
     const applyDefaultRelationships = () => {
-      if (!outputMarkdownRelationshipOptions.length) {
+      if (!defaultRelationshipOptions.length) {
         setSelectedRels([]);
         setAllPatterns([]);
         updateLocalStorage(userCredentials, 'selectedRelationshipLabels', []);
         updateLocalStorage(userCredentials, 'selectedPattern', []);
         return;
       }
-      const defaultRels = Array.from(outputMarkdownRelationshipOptions);
-      setSelectedRels(defaultRels);
-      const generatedPatterns = defaultRels.map((rel) => {
-        const [source, type, target] = rel.value.split(',');
-        return `(${source})-[${type}]->(${target})`;
-      });
-      setAllPatterns(generatedPatterns);
-      updateLocalStorage(userCredentials, 'selectedRelationshipLabels', defaultRels);
-      updateLocalStorage(userCredentials, 'selectedPattern', generatedPatterns);
+      setSelectedRels(defaultRelationshipOptions);
+      setAllPatterns(defaultPatternList);
+      updateLocalStorage(userCredentials, 'selectedRelationshipLabels', defaultRelationshipOptions);
+      updateLocalStorage(userCredentials, 'selectedPattern', defaultPatternList);
     };
 
-    const storedNodeLabels = localStorage.getItem('selectedNodeLabels');
-    if (storedNodeLabels) {
-      const parsedNodeLabels = JSON.parse(storedNodeLabels);
-      if (
-        parsedNodeLabels?.db === userCredentials.uri &&
-        Array.isArray(parsedNodeLabels.selectedOptions) &&
-        parsedNodeLabels.selectedOptions.length > 0
-      ) {
-        setSelectedNodes(parsedNodeLabels.selectedOptions);
+    const applyDefaultSchemasOnly = () => {
+      if (defaultSchemaSelection.length) {
+        setSelectedSchemas(defaultSchemaSelection);
+        updateLocalStorage(userCredentials, 'selectedSchemas', defaultSchemaSelection);
       } else {
-        applyDefaultNodes();
+        setSelectedSchemas([]);
+        updateLocalStorage(userCredentials, 'selectedSchemas', []);
       }
-    } else {
+      defaultsApplied = true;
+    };
+
+    const applyPredefinedDefaults = () => {
+      setPreDefinedNodes(defaultNodeOptions);
+      setPreDefinedRels(defaultRelationshipOptions);
+      setPreDefinedPattern(defaultPatternList);
+      setSelectedPreDefOption(defaultPredefinedOption);
+    };
+
+    const applyOutputMarkdownDefaults = () => {
       applyDefaultNodes();
-    }
-
-    const storedRelationshipLabels = localStorage.getItem('selectedRelationshipLabels');
-    if (storedRelationshipLabels) {
-      const parsedRelationshipLabels = JSON.parse(storedRelationshipLabels);
-      if (
-        parsedRelationshipLabels?.db === userCredentials.uri &&
-        Array.isArray(parsedRelationshipLabels.selectedOptions) &&
-        parsedRelationshipLabels.selectedOptions.length > 0
-      ) {
-        const rels = parsedRelationshipLabels.selectedOptions;
-        setSelectedRels(rels);
-        const generatedPatterns = rels.map((rel: { value: string }) => {
-          const [source, type, target] = rel.value.split(',');
-          return `(${source})-[${type}]->(${target})`;
-        });
-        setAllPatterns(generatedPatterns);
-      } else {
-        applyDefaultRelationships();
-      }
-    } else {
       applyDefaultRelationships();
+      applyDefaultSchemasOnly();
+      applyPredefinedDefaults();
+    };
+
+    const storedSchemaVersion = localStorage.getItem(OUTPUT_MARKDOWN_SCHEMA_VERSION_KEY);
+    const shouldForceDefaults =
+      hasOutputMarkdownSchema &&
+      defaultNodeOptions.length > 0 &&
+      defaultRelationshipOptions.length > 0 &&
+      storedSchemaVersion !== OUTPUT_MARKDOWN_SCHEMA_VERSION;
+
+    if (shouldForceDefaults) {
+      applyOutputMarkdownDefaults();
+    } else {
+      const storedSchemasRaw = localStorage.getItem('selectedSchemas');
+      let shouldApplySchemaDefaults = false;
+
+      if (storedSchemasRaw) {
+        try {
+          const parsedSchemas = JSON.parse(storedSchemasRaw);
+          if (
+            parsedSchemas?.db === userCredentials.uri &&
+            Array.isArray(parsedSchemas.selectedOptions) &&
+            parsedSchemas.selectedOptions.length > 0
+          ) {
+            setSelectedSchemas(parsedSchemas.selectedOptions);
+          } else {
+            shouldApplySchemaDefaults = true;
+          }
+        } catch (error) {
+          console.error('Failed to parse stored schemas from localStorage', error);
+          shouldApplySchemaDefaults = true;
+        }
+      } else if (defaultSchemaSelection.length) {
+        shouldApplySchemaDefaults = true;
+      }
+
+      if (shouldApplySchemaDefaults) {
+        applyOutputMarkdownDefaults();
+      } else {
+        const storedNodeLabels = localStorage.getItem('selectedNodeLabels');
+        if (storedNodeLabels) {
+          try {
+            const parsedNodeLabels = JSON.parse(storedNodeLabels);
+            if (
+              parsedNodeLabels?.db === userCredentials.uri &&
+              Array.isArray(parsedNodeLabels.selectedOptions) &&
+              parsedNodeLabels.selectedOptions.length > 0
+            ) {
+              setSelectedNodes(parsedNodeLabels.selectedOptions);
+            } else {
+              applyDefaultNodes();
+            }
+          } catch (error) {
+            console.error('Failed to parse stored node labels from localStorage', error);
+            applyDefaultNodes();
+          }
+        } else {
+          applyDefaultNodes();
+        }
+
+        const storedRelationshipLabels = localStorage.getItem('selectedRelationshipLabels');
+        if (storedRelationshipLabels) {
+          try {
+            const parsedRelationshipLabels = JSON.parse(storedRelationshipLabels);
+            if (
+              parsedRelationshipLabels?.db === userCredentials.uri &&
+              Array.isArray(parsedRelationshipLabels.selectedOptions) &&
+              parsedRelationshipLabels.selectedOptions.length > 0
+            ) {
+              const rels = parsedRelationshipLabels.selectedOptions;
+              setSelectedRels(rels);
+              const generatedPatterns = rels.map((rel: { value: string }) => {
+                const [source, type, target] = rel.value.split(',');
+                return `(${source})-[${type}]->(${target})`;
+              });
+              setAllPatterns(generatedPatterns);
+            } else {
+              applyDefaultRelationships();
+            }
+          } catch (error) {
+            console.error('Failed to parse stored relationship labels from localStorage', error);
+            applyDefaultRelationships();
+          }
+        } else {
+          applyDefaultRelationships();
+        }
+      }
     }
 
-    const storedSchemas = localStorage.getItem('selectedSchemas');
-    if (storedSchemas) {
-      const parsedSchemas = JSON.parse(storedSchemas);
-      if (
-        parsedSchemas?.db === userCredentials.uri &&
-        Array.isArray(parsedSchemas.selectedOptions) &&
-        parsedSchemas.selectedOptions.length > 0
-      ) {
-        setSelectedSchemas(parsedSchemas.selectedOptions);
-      } else if (outputMarkdownSelectedSchemaOptions.length) {
-        const schemaSelection = Array.from(outputMarkdownSelectedSchemaOptions);
-        setSelectedSchemas(schemaSelection);
-        updateLocalStorage(userCredentials, 'selectedSchemas', schemaSelection);
-      }
-    } else if (outputMarkdownSelectedSchemaOptions.length) {
-      const schemaSelection = Array.from(outputMarkdownSelectedSchemaOptions);
-      setSelectedSchemas(schemaSelection);
-      updateLocalStorage(userCredentials, 'selectedSchemas', schemaSelection);
+    if (defaultsApplied) {
+      localStorage.setItem(OUTPUT_MARKDOWN_SCHEMA_VERSION_KEY, OUTPUT_MARKDOWN_SCHEMA_VERSION);
     }
 
     if (selectedTokenChunkSizeStr != null) {

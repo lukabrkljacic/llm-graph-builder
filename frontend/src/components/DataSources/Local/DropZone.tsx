@@ -29,6 +29,7 @@ const DropZone: FunctionComponent = () => {
         relationshipsCount: 0,
         model: model,
         fileSource: 'local file',
+        project: '',
         uploadProgress: 0,
         processingProgress: undefined,
         retryOptionStatus: false,

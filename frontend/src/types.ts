@@ -15,6 +15,7 @@ export interface CustomFileBase extends Partial<globalThis.File> {
   relationshipsCount: number;
   model: string;
   fileSource: string;
+  project?: string;
   sourceUrl?: string;
   wikiQuery?: string;
   gcsBucket?: string;
@@ -301,6 +302,7 @@ export interface fileName {
   gcsBucketFolder?: string;
   status?: string;
   gcsProjectId: string;
+  project?: string;
   language?: string;
 }
 export interface URLSCAN_RESPONSE {

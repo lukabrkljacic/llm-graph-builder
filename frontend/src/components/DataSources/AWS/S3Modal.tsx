@@ -35,6 +35,7 @@ const S3Modal: React.FC<S3ModalProps> = ({ hideModal, open }) => {
       type: 'PDF',
       model: model,
       fileSource: 's3 bucket',
+      project: '',
       processingProgress: undefined,
       retryOption: '',
       retryOptionStatus: false,
@@ -85,6 +86,7 @@ const S3Modal: React.FC<S3ModalProps> = ({ hideModal, open }) => {
               name: item.fileName,
               size: item.fileSize,
               sourceUrl: item.url,
+              project: item.project ?? defaultValues.project ?? '',
               uploadProgress: 100,
               // total_pages: 'N/A',
               id: uuidv4(),
@@ -101,6 +103,7 @@ const S3Modal: React.FC<S3ModalProps> = ({ hideModal, open }) => {
               processingTotalTime: defaultValues.processingTotalTime,
               model: defaultValues.model,
               fileSource: defaultValues.fileSource,
+              project: item.project ?? tempFileData.project ?? defaultValues.project ?? '',
               processingProgress: defaultValues.processingProgress,
               uploadProgress: 100,
             });

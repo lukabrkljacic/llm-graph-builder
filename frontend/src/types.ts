@@ -627,6 +627,9 @@ export interface Chunk {
   score?: string;
   fileType: string;
   element_id: string;
+  project?: string;
+  gcsProjectId?: string;
+  googleProjectId?: string;
 }
 
 export interface SpeechSynthesisProps {
@@ -742,6 +745,7 @@ export interface S3File {
   fileName: string;
   fileSize: number;
   url: string;
+  project?: string;
 }
 export interface GraphViewButtonProps {
   nodeValues?: ExtendedNode[];

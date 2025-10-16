@@ -66,7 +66,14 @@ def process_chunk_data(chunk_data):
     Processes a record to extract chunk_text
     """
     try:
-        required_doc_properties = ["fileSource", "fileType", "url"]
+        required_doc_properties = [
+            "fileSource",
+            "fileType",
+            "url",
+            "project",
+            "gcsProjectId",
+            "googleProjectId",
+        ]
         chunk_properties = []
 
         for record in chunk_data:

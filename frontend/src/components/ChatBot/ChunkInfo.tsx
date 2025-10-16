@@ -1,5 +1,5 @@
 import { FC, useContext, useState } from 'react';
-import { ChunkProps } from '../../types';
+import { Chunk, ChunkProps } from '../../types';
 import { Flex, LoadingSpinner, TextLink, Typography } from '@neo4j-ndl/react';
 import { DocumentTextIconOutline, ExploreIcon, GlobeAltIconOutline } from '@neo4j-ndl/react/icons';
 import wikipedialogo from '../../assets/images/wikipedia.svg';
@@ -7,7 +7,7 @@ import youtubelogo from '../../assets/images/youtube.svg';
 import gcslogo from '../../assets/images/gcs.webp';
 import s3logo from '../../assets/images/s3logo.png';
 import ReactMarkdown from 'react-markdown';
-import { generateYouTubeLink, getLogo, isAllowedHost } from '../../utils/Utils';
+import { generateYouTubeLink, getLogo, getProjectDisplayName, isAllowedHost } from '../../utils/Utils';
 import { ThemeWrapperContext } from '../../context/ThemeWrapper';
 import { chatModeLables } from '../../utils/Constants';
 import GraphViewModal from '../Graph/GraphViewModal';
@@ -15,6 +15,18 @@ import { handleGraphNodeClick } from './chatInfo';
 import { IconButtonWithToolTip } from '../UI/IconButtonToolTip';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+
+const ProjectBadge: FC<{ chunk: Chunk }> = ({ chunk }) => {
+  const projectName = getProjectDisplayName(chunk.project, chunk.gcsProjectId, chunk.googleProjectId);
+  return (
+    <Typography
+      variant='body-small'
+      className='text-palette-neutral-text-weak text-ellipsis whitespace-nowrap overflow-hidden max-w-lg'
+    >
+      Project: {projectName}
+    </Typography>
+  );
+};
 const ChunkInfo: FC<ChunkProps> = ({ loading, chunks, mode }) => {
   const themeUtils = useContext(ThemeWrapperContext);
   const [neoNodes, setNeoNodes] = useState<any[]>([]);
@@ -49,15 +61,16 @@ const ChunkInfo: FC<ChunkProps> = ({ loading, chunks, mode }) => {
                 {chunk?.page_number ? (
                   <>
                     <div className='flex! flex-row items-center gap-1'>
-                      <>
-                        <DocumentTextIconOutline className='w-4 h-4 inline-block mr-2' />
+                      <DocumentTextIconOutline className='w-4 h-4 inline-block mr-2' />
+                      <div className='flex flex-col overflow-hidden'>
                         <Typography
                           variant='body-medium'
                           className='text-ellipsis whitespace-nowrap overflow-hidden max-w-lg'
                         >
                           {chunk?.fileName}
                         </Typography>
-                      </>
+                        <ProjectBadge chunk={chunk} />
+                      </div>
                     </div>
                     {mode !== chatModeLables['global search+vector+fulltext'] &&
                       mode !== chatModeLables['entity search+vector'] &&
@@ -84,18 +97,21 @@ const ChunkInfo: FC<ChunkProps> = ({ loading, chunks, mode }) => {
                   <>
                     <div className='flex! flex-row justiy-between items-center gap-1'>
                       <img src={youtubelogo} width={20} height={20} className='mr-2' alt='youtube-source-logo' />
-                      <TextLink
-                        href={generateYouTubeLink(chunk?.url, chunk?.start_time)}
-                        type={'external'}
-                        target='_blank'
-                      >
-                        <Typography
-                          variant='body-medium'
-                          className='text-ellipsis whitespace-nowrap overflow-hidden max-w-lg'
+                      <div className='flex flex-col overflow-hidden'>
+                        <TextLink
+                          href={generateYouTubeLink(chunk?.url, chunk?.start_time)}
+                          type={'external'}
+                          target='_blank'
                         >
-                          {chunk?.fileName}
-                        </Typography>
-                      </TextLink>
+                          <Typography
+                            variant='body-medium'
+                            className='text-ellipsis whitespace-nowrap overflow-hidden max-w-lg'
+                          >
+                            {chunk?.fileName}
+                          </Typography>
+                        </TextLink>
+                        <ProjectBadge chunk={chunk} />
+                      </div>
                     </div>
                     {mode !== chatModeLables['global search+vector+fulltext'] &&
                       mode !== chatModeLables['entity search+vector'] &&
@@ -120,7 +136,10 @@ const ChunkInfo: FC<ChunkProps> = ({ loading, chunks, mode }) => {
                   <>
                     <div className='flex! flex-row justiy-between items-center gap-1'>
                       <img src={wikipedialogo} width={20} height={20} className='mr-2' alt='wikipedia-source-logo' />
-                      <Typography variant='subheading-medium'>{chunk?.fileName}</Typography>
+                      <div className='flex flex-col overflow-hidden'>
+                        <Typography variant='subheading-medium'>{chunk?.fileName}</Typography>
+                        <ProjectBadge chunk={chunk} />
+                      </div>
                     </div>
                     {mode !== chatModeLables['global search+vector+fulltext'] &&
                       mode !== chatModeLables['entity search+vector'] &&
@@ -147,7 +166,10 @@ const ChunkInfo: FC<ChunkProps> = ({ loading, chunks, mode }) => {
                   <>
                     <div className='flex! flex-row justiy-between items-center gap-1'>
                       <img src={gcslogo} width={20} height={20} className='mr-2' alt='gcs-source-logo' />
-                      <Typography variant='subheading-medium'>{chunk?.fileName}</Typography>
+                      <div className='flex flex-col overflow-hidden'>
+                        <Typography variant='subheading-medium'>{chunk?.fileName}</Typography>
+                        <ProjectBadge chunk={chunk} />
+                      </div>
                     </div>
                     {mode !== chatModeLables['global search+vector+fulltext'] &&
                       mode !== chatModeLables['entity search+vector'] &&
@@ -172,7 +194,10 @@ const ChunkInfo: FC<ChunkProps> = ({ loading, chunks, mode }) => {
                   <>
                     <div className='flex! flex-row  justiy-between items-center gap-1'>
                       <img src={s3logo} width={20} height={20} className='mr-2' alt='s3-source-logo' />
-                      <Typography variant='subheading-medium'>{chunk?.fileName}</Typography>
+                      <div className='flex flex-col overflow-hidden'>
+                        <Typography variant='subheading-medium'>{chunk?.fileName}</Typography>
+                        <ProjectBadge chunk={chunk} />
+                      </div>
                     </div>
                     {mode !== chatModeLables['global search+vector+fulltext'] &&
                       mode !== chatModeLables['entity search+vector'] &&
@@ -199,9 +224,17 @@ const ChunkInfo: FC<ChunkProps> = ({ loading, chunks, mode }) => {
                   <>
                     <div className='flex! flex-row items-center gap-1'>
                       <GlobeAltIconOutline className='n-size-token-7' />
-                      <TextLink href={chunk?.url} type='external' target='_blank'>
-                        <Typography variant='body-medium'>{chunk?.url}</Typography>
-                      </TextLink>
+                      <div className='flex flex-col overflow-hidden'>
+                        <TextLink href={chunk?.url} type='external' target='_blank'>
+                          <Typography
+                            variant='body-medium'
+                            className='text-ellipsis whitespace-nowrap overflow-hidden max-w-lg'
+                          >
+                            {chunk?.url}
+                          </Typography>
+                        </TextLink>
+                        <ProjectBadge chunk={chunk} />
+                      </div>
                     </div>
                     {mode !== chatModeLables['global search+vector+fulltext'] &&
                       mode !== chatModeLables['entity search+vector'] &&
@@ -237,12 +270,15 @@ const ChunkInfo: FC<ChunkProps> = ({ loading, chunks, mode }) => {
                               className='mr-2'
                             />
                           )}
-                          <Typography
-                            variant='body-medium'
-                            className='text-ellipsis whitespace-nowrap overflow-hidden max-w-lg'
-                          >
-                            {chunk.fileName}
-                          </Typography>
+                          <div className='flex flex-col overflow-hidden'>
+                            <Typography
+                              variant='body-medium'
+                              className='text-ellipsis whitespace-nowrap overflow-hidden max-w-lg'
+                            >
+                              {chunk.fileName}
+                            </Typography>
+                            <ProjectBadge chunk={chunk} />
+                          </div>
                         </div>
                         <IconButtonWithToolTip
                           placement='top'
@@ -254,7 +290,6 @@ const ChunkInfo: FC<ChunkProps> = ({ loading, chunks, mode }) => {
                           <ExploreIcon className='n-size-token-5' />
                         </IconButtonWithToolTip>
                       </Flex>
-                      <></>
                     </div>
                   </>
                 )}

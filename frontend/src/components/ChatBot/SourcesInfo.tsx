@@ -2,7 +2,7 @@ import { FC, useContext } from 'react';
 import { Chunk, SourcesProps } from '../../types';
 import { LoadingSpinner, TextLink, Typography } from '@neo4j-ndl/react';
 import { DocumentTextIconOutline, GlobeAltIconOutline } from '@neo4j-ndl/react/icons';
-import { getLogo, isAllowedHost, youtubeLinkValidation } from '../../utils/Utils';
+import { getLogo, getProjectDisplayName, isAllowedHost, youtubeLinkValidation } from '../../utils/Utils';
 import { ThemeWrapperContext } from '../../context/ThemeWrapper';
 import HoverableLink from '../UI/HoverableLink';
 import wikipedialogo from '../../assets/images/wikipedia.svg';
@@ -33,33 +33,44 @@ const SourcesInfo: FC<SourcesProps> = ({ loading, mode, chunks, sources }) => {
         </div>
       ) : mode === 'entity search+vector' && uniqueChunks.length ? (
         <ul>
-          {uniqueChunks
-            .map((c) => ({ fileName: c.fileName, fileSource: c.fileSource }))
-            .map((s, index) => {
-              return (
-                <li key={index} className='flex! flex-row justify-between items-center p-2'>
-                  <div className='flex! flex-row  justify-between items-center'>
-                    {s.fileSource === 'local file' ? (
-                      <DocumentTextIconOutline className='n-size-token-7 mr-2' />
-                    ) : (
-                      <img
-                        src={getLogo(themeUtils.colorMode)[s.fileSource]}
-                        width={20}
-                        height={20}
-                        className='mr-2'
-                        alt='source-logo'
-                      />
-                    )}
+          {uniqueChunks.map((chunk, index) => {
+            const projectName = getProjectDisplayName(
+              chunk.project,
+              chunk.gcsProjectId,
+              chunk.googleProjectId
+            );
+            return (
+              <li key={index} className='flex! flex-row justify-between items-center p-2'>
+                <div className='flex! flex-row  justify-between items-center'>
+                  {chunk.fileSource === 'local file' ? (
+                    <DocumentTextIconOutline className='n-size-token-7 mr-2' />
+                  ) : (
+                    <img
+                      src={getLogo(themeUtils.colorMode)[chunk.fileSource]}
+                      width={20}
+                      height={20}
+                      className='mr-2'
+                      alt='source-logo'
+                    />
+                  )}
+                  <div className='flex flex-col overflow-hidden'>
                     <Typography
                       variant='body-medium'
                       className='text-ellipsis whitespace-nowrap overflow-hidden max-w-lg'
                     >
-                      {s.fileName}
+                      {chunk.fileName}
+                    </Typography>
+                    <Typography
+                      variant='body-small'
+                      className='text-palette-neutral-text-weak text-ellipsis whitespace-nowrap overflow-hidden max-w-lg'
+                    >
+                      Project: {projectName}
                     </Typography>
                   </div>
-                </li>
-              );
-            })}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       ) : sources?.length ? (
         <ul className='list-class list-none'>

@@ -5,6 +5,14 @@ within Python (for example, inside a Jupyter notebook). In both cases it
 mirrors the manual UI flow (upload -> extract -> post processing) so large
 batches of documents can be prepared ahead of time. The backend service must be
 running and reachable via the configured base URL.
+
+The command line interface exposes most of the knobs found in the UI, including
+the graph schema controls. By default the allowed node labels and
+relationships are derived from ``frontend/src/assets/newSchema.json`` so the
+``/extract`` endpoint receives the same defaults that power the UI. Both
+settings can be overridden explicitly via CLI options or the
+``LLM_GRAPH_ALLOWED_NODES`` / ``LLM_GRAPH_ALLOWED_RELATIONSHIPS`` environment
+variables.
 """
 from __future__ import annotations
 
@@ -27,6 +35,17 @@ DEFAULT_CHUNKS_TO_COMBINE = 1
 CHUNK_SIZE_ENV = "VITE_TOKENS_PER_CHUNK"
 CHUNK_OVERLAP_ENV = "VITE_CHUNK_OVERLAP"
 CHUNKS_TO_COMBINE_ENV = "VITE_CHUNK_TO_COMBINE"
+ALLOWED_NODES_ENV = "LLM_GRAPH_ALLOWED_NODES"
+ALLOWED_RELATIONSHIPS_ENV = "LLM_GRAPH_ALLOWED_RELATIONSHIPS"
+
+DEFAULT_SCHEMA_NAME = "output_markdown"
+DEFAULT_SCHEMA_FILE = (
+    Path(__file__).resolve().parents[2]
+    / "frontend"
+    / "src"
+    / "assets"
+    / "newSchema.json"
+)
 
 DEFAULT_PROCESSED_ROOT = (
     Path(__file__).resolve().parents[2]
@@ -170,6 +189,110 @@ def _create_form_payload(base: Mapping[str, str], **extra: Optional[object]) -> 
             payload[key] = coerced
     return payload
 
+def _parse_triplet(triplet: str) -> Optional[tuple[str, str, str]]:
+    """Return ``(source, relationship, target)`` extracted from a schema string."""
+
+    if not triplet or "->" not in triplet:
+        return None
+
+    source_part, target_part = triplet.split("->", 1)
+    if "-" not in source_part:
+        return None
+
+    raw_source, raw_relationship = source_part.split("-", 1)
+    source = raw_source.strip()
+    relationship = raw_relationship.strip()
+    target = target_part.strip()
+    if not (source and relationship and target):
+        return None
+    return source, relationship, target
+
+
+def _load_schema_defaults(
+    schema_file: Path = DEFAULT_SCHEMA_FILE,
+    schema_name: str = DEFAULT_SCHEMA_NAME,
+) -> tuple[str, str]:
+    """Return CSV strings of default node labels and relationships."""
+
+    try:
+        with schema_file.open("r", encoding="utf-8") as fh:
+            schema_data = json.load(fh)
+    except FileNotFoundError:
+        LOGGER.warning(
+            "Schema file %s was not found; allowed nodes/relationships will be empty.",
+            schema_file,
+        )
+        return "", ""
+    except json.JSONDecodeError as exc:
+        LOGGER.warning(
+            "Schema file %s could not be parsed (%s); allowed nodes/relationships will be empty.",
+            schema_file,
+            exc,
+        )
+        return "", ""
+
+    selected_triplets: list[str] = []
+    if isinstance(schema_data, list):
+        for entry in schema_data:
+            if not isinstance(entry, dict):
+                continue
+            if schema_name and entry.get("schema") != schema_name:
+                continue
+            triplets = entry.get("triplet")
+            if isinstance(triplets, list):
+                selected_triplets.extend(
+                    triplet for triplet in triplets if isinstance(triplet, str)
+                )
+    if not selected_triplets and isinstance(schema_data, list):
+        for entry in schema_data:
+            if not isinstance(entry, dict):
+                continue
+            triplets = entry.get("triplet")
+            if isinstance(triplets, list):
+                selected_triplets.extend(
+                    triplet for triplet in triplets if isinstance(triplet, str)
+                )
+
+    node_labels: list[str] = []
+    seen_nodes: set[str] = set()
+    relationship_items: list[str] = []
+
+    for triplet in selected_triplets:
+        parsed = _parse_triplet(triplet)
+        if not parsed:
+            continue
+        source, relationship, target = parsed
+        if source not in seen_nodes:
+            seen_nodes.add(source)
+            node_labels.append(source)
+        if target not in seen_nodes:
+            seen_nodes.add(target)
+            node_labels.append(target)
+        relationship_items.extend([source, relationship, target])
+
+    return ",".join(node_labels), ",".join(relationship_items)
+
+
+def _resolve_allowed_schema_values(
+    allowed_nodes: Optional[str], allowed_relationships: Optional[str]
+) -> tuple[str, str]:
+    """Resolve allowed node and relationship CSV strings with fallbacks."""
+
+    env_allowed_nodes = os.environ.get(ALLOWED_NODES_ENV)
+    env_allowed_relationships = os.environ.get(ALLOWED_RELATIONSHIPS_ENV)
+
+    resolved_nodes = allowed_nodes or env_allowed_nodes
+    resolved_relationships = allowed_relationships or env_allowed_relationships
+
+    if resolved_nodes and resolved_relationships:
+        return resolved_nodes, resolved_relationships
+
+    default_nodes, default_relationships = _load_schema_defaults()
+    if not resolved_nodes:
+        resolved_nodes = default_nodes
+    if not resolved_relationships:
+        resolved_relationships = default_relationships
+    return resolved_nodes, resolved_relationships
 
 def _post_json(session: requests.Session, url: str, data: Mapping[str, str], files=None, timeout: int = 120) -> Mapping[str, object]:
     """Send a POST request and validate the API response structure."""
@@ -239,6 +362,8 @@ def extract_markdown(
     chunks_to_combine: Optional[int] = None,
     retry_condition: Optional[str] = None,
     additional_instructions: Optional[str] = None,
+    allowed_nodes: Optional[str] = None,
+    allowed_relationships: Optional[str] = None,
 ) -> Mapping[str, object]:
     """Trigger the extraction pipeline for a previously uploaded local file."""
 
@@ -254,6 +379,8 @@ def extract_markdown(
         chunks_to_combine=chunks_to_combine,
         retry_condition=retry_condition,
         additional_instructions=additional_instructions,
+        allowedNodes=allowed_nodes,
+        allowedRelationship=allowed_relationships,
     )
     return _post_json(session, url, data=data)
 
@@ -300,7 +427,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--model",
-        default=os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
+        default=os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small"),
         help="Embedding model name to store alongside the document metadata (default: %(default)s)",
     )
     parser.add_argument("--uri", default=os.environ.get("NEO4J_URI"), help="Neo4j URI")
@@ -349,6 +476,22 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Optional free-form instructions forwarded to the LLM during extraction.",
     )
     parser.add_argument(
+        "--allowed-nodes",
+        default=None,
+        help=(
+            "Comma separated node labels forwarded to /extract. Defaults to the UI schema "
+            "(LLM_GRAPH_ALLOWED_NODES environment variable overrides when set)."
+        ),
+    )
+    parser.add_argument(
+        "--allowed-relationships",
+        default=None,
+        help=(
+            "Comma separated relationship triples (source,relationship,target) forwarded to /extract. "
+            "Defaults to the UI schema (LLM_GRAPH_ALLOWED_RELATIONSHIPS overrides when set)."
+        ),
+    )
+    parser.add_argument(
         "--post-processing-tasks",
         nargs="*",
         default=list(DEFAULT_POST_PROCESSING_TASKS),
@@ -392,6 +535,8 @@ def ingest_project_via_api(
     chunks_to_combine: Optional[int] = None,
     retry_condition: Optional[str] = None,
     additional_instructions: Optional[str] = None,
+    allowed_nodes: Optional[str] = None,
+    allowed_relationships: Optional[str] = None,
     post_processing_tasks: Optional[Iterable[str]] = DEFAULT_POST_PROCESSING_TASKS,
     skip_post_processing: bool = False,
     env_file: Optional[Path] = None,
@@ -411,13 +556,18 @@ def ingest_project_via_api(
         environment variable or ``http://localhost:8000``.
     model:
         Embedding model to store with the ``Document`` metadata. Defaults to the
-        ``EMBEDDING_MODEL`` environment variable or ``all-MiniLM-L6-v2``.
+        ``EMBEDDING_MODEL`` environment variable or ``text-embedding-3-small``.
     uri, user, password, database:
         Neo4j connection information. ``uri``, ``user`` and ``password`` are required.
         Each argument falls back to its respective ``NEO4J_*`` environment variable.
     token_chunk_size, chunk_overlap, chunks_to_combine, retry_condition,
     additional_instructions:
         Optional overrides that are forwarded to the ``/extract`` endpoint.
+    allowed_nodes, allowed_relationships:
+        Optional comma separated strings that limit what the extractor is allowed to
+        create. Defaults mirror the UI schema and honour the
+        ``LLM_GRAPH_ALLOWED_NODES`` / ``LLM_GRAPH_ALLOWED_RELATIONSHIPS`` environment
+        variables.
     post_processing_tasks:
         Iterable of tasks to run via the ``/post_processing`` endpoint. Set to ``None`` to
         skip. Ignored when ``skip_post_processing`` is ``True``.
@@ -445,7 +595,7 @@ def ingest_project_via_api(
     configure_logging(log_level)
 
     base_url = base_url or os.environ.get("LLM_GRAPH_BUILDER_BASE_URL", "http://localhost:8000")
-    model = model or os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+    model = model or os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
     uri = uri or os.environ.get("NEO4J_URI")
     user = user or os.environ.get("NEO4J_USERNAME")
     password = password or os.environ.get("NEO4J_PASSWORD")
@@ -471,6 +621,10 @@ def ingest_project_via_api(
         "database": database,
     }
 
+    allowed_nodes, allowed_relationships = _resolve_allowed_schema_values(
+        allowed_nodes, allowed_relationships
+    )
+
     created_session = False
     if session is None:
         session = requests.Session()
@@ -490,6 +644,8 @@ def ingest_project_via_api(
                 chunks_to_combine=chunks_to_combine,
                 retry_condition=retry_condition,
                 additional_instructions=additional_instructions,
+                allowed_nodes=allowed_nodes,
+                allowed_relationships=allowed_relationships,
             )
 
         if not skip_post_processing and post_processing_tasks:
@@ -521,6 +677,8 @@ def main(argv: Optional[List[str]] = None) -> None:
             chunks_to_combine=args.chunks_to_combine,
             retry_condition=args.retry_condition,
             additional_instructions=args.additional_instructions,
+            allowed_nodes=args.allowed_nodes,
+            allowed_relationships=args.allowed_relationships,
             post_processing_tasks=args.post_processing_tasks,
             skip_post_processing=args.skip_post_processing,
             env_file=args.env_file,

@@ -52,6 +52,7 @@ export default function useSourceInput(
         type: 'TEXT',
         model: model,
         fileSource: fileSource,
+        project: '',
         processingProgress: undefined,
         retryOption: '',
         retryOptionStatus: false,
@@ -121,6 +122,7 @@ export default function useSourceInput(
                   sourceUrl: item.url,
                   id: uuidv4(),
                   language: item.language,
+                  project: item.project ?? defaultValues.project ?? '',
                   uploadProgress: 100,
                   // total_pages: 1,
                   ...defaultValues,
@@ -140,6 +142,7 @@ export default function useSourceInput(
                   processingTotalTime: defaultValues.processingTotalTime,
                   model: defaultValues.model,
                   fileSource: defaultValues.fileSource,
+                  project: item.project ?? tempFileData.project ?? defaultValues.project ?? '',
                   processingProgress: defaultValues.processingProgress,
                   uploadProgress: 100,
                 });

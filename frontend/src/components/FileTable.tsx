@@ -149,6 +149,21 @@ const FileTable: ForwardRefRenderFunction<ChildRef, FileTableProps> = (props, re
         },
         size: 80,
       },
+      columnHelper.accessor((row) => row.project ?? row.googleProjectId ?? '', {
+        id: 'project',
+        cell: (info) => {
+          const value = info.getValue();
+          const trimmedValue = value.trim();
+          const displayValue = trimmedValue.length ? value : '—';
+          return (
+            <div className='textellipsis'>
+              <span title={trimmedValue.length ? value : undefined}>{displayValue}</span>
+            </div>
+          );
+        },
+        header: () => <span>Project</span>,
+        footer: (info) => info.column.id,
+      }),
       columnHelper.accessor((row) => row.name, {
         id: 'name',
         cell: (info) => {
@@ -753,6 +768,7 @@ const FileTable: ForwardRefRenderFunction<ChildRef, FileTableProps> = (props, re
                   errorMessage: item?.errorMessage,
                   uploadProgress: item?.uploadprogress ?? 0,
                   googleProjectId: item?.gcsProjectId,
+                  project: item?.project ?? item?.gcsProjectId ?? '',
                   language: item?.language ?? '',
                   processingProgress:
                     item?.processed_chunk != undefined &&

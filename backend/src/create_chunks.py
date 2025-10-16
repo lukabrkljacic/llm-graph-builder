@@ -25,10 +25,48 @@ class CreateChunksofDocument:
             A list of chunks each of which is a langchain Document.
         """
         logging.info("Split file into smaller chunks")
-        text_splitter = TokenTextSplitter(chunk_size=token_chunk_size, chunk_overlap=chunk_overlap)
-        MAX_TOKEN_CHUNK_SIZE = int(os.getenv('MAX_TOKEN_CHUNK_SIZE', 10000))
-        chunk_to_be_created = int(MAX_TOKEN_CHUNK_SIZE / token_chunk_size)
-        
+        try:
+            token_chunk_size = int(token_chunk_size)
+        except (TypeError, ValueError):
+            raise ValueError("token_chunk_size must be a positive integer") from None
+
+        if token_chunk_size <= 0:
+            raise ValueError("token_chunk_size must be a positive integer")
+
+        try:
+            chunk_overlap = int(chunk_overlap)
+        except (TypeError, ValueError):
+            logging.warning(
+                "chunk_overlap value %r is invalid. Defaulting to 0.", chunk_overlap
+            )
+            chunk_overlap = 0
+
+        if chunk_overlap < 0:
+            logging.warning("chunk_overlap cannot be negative. Defaulting to 0.")
+            chunk_overlap = 0
+        elif chunk_overlap >= token_chunk_size:
+            adjusted_overlap = max(token_chunk_size - 1, 0)
+            logging.warning(
+                "chunk_overlap %d must be smaller than token_chunk_size %d. Using %d.",
+                chunk_overlap,
+                token_chunk_size,
+                adjusted_overlap,
+            )
+            chunk_overlap = adjusted_overlap
+
+        try:
+            max_token_chunk_size = int(os.getenv('MAX_TOKEN_CHUNK_SIZE', 10000))
+        except (TypeError, ValueError):
+            logging.warning(
+                "MAX_TOKEN_CHUNK_SIZE environment variable is invalid. Using 10000."
+            )
+            max_token_chunk_size = 10000
+
+        text_splitter = TokenTextSplitter(
+            chunk_size=token_chunk_size, chunk_overlap=chunk_overlap
+        )
+        chunk_to_be_created = max(max_token_chunk_size // token_chunk_size, 1)
+
         if 'page' in self.pages[0].metadata:
             chunks = []
             for i, document in enumerate(self.pages):

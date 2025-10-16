@@ -15,6 +15,7 @@ export interface CustomFileBase extends Partial<globalThis.File> {
   relationshipsCount: number;
   model: string;
   fileSource: string;
+  project?: string;
   sourceUrl?: string;
   wikiQuery?: string;
   gcsBucket?: string;
@@ -301,6 +302,7 @@ export interface fileName {
   gcsBucketFolder?: string;
   status?: string;
   gcsProjectId: string;
+  project?: string;
   language?: string;
 }
 export interface URLSCAN_RESPONSE {
@@ -625,6 +627,9 @@ export interface Chunk {
   score?: string;
   fileType: string;
   element_id: string;
+  project?: string;
+  gcsProjectId?: string;
+  googleProjectId?: string;
 }
 
 export interface SpeechSynthesisProps {
@@ -740,6 +745,7 @@ export interface S3File {
   fileName: string;
   fileSize: number;
   url: string;
+  project?: string;
 }
 export interface GraphViewButtonProps {
   nodeValues?: ExtendedNode[];

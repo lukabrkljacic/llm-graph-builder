@@ -418,6 +418,23 @@ export const capitalizeWithPlus = (s: string) => {
 };
 export const capitalizeWithUnderscore = (s: string) => capitalize(s).split('_').join(' ');
 
+export const getProjectDisplayName = (
+  project?: string,
+  gcsProjectId?: string,
+  googleProjectId?: string
+) => {
+  const candidates = [project, gcsProjectId, googleProjectId];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string') {
+      const trimmed = candidate.trim();
+      if (trimmed.length) {
+        return trimmed;
+      }
+    }
+  }
+  return '—';
+};
+
 export const getDescriptionForChatMode = (mode: string): string => {
   switch (mode.toLowerCase()) {
     case chatModeLables.vector:

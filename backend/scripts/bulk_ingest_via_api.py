@@ -20,6 +20,14 @@ from dotenv import load_dotenv
 
 LOGGER = logging.getLogger(__name__)
 
+DEFAULT_TOKEN_CHUNK_SIZE = 100
+DEFAULT_CHUNK_OVERLAP = 20
+DEFAULT_CHUNKS_TO_COMBINE = 1
+
+CHUNK_SIZE_ENV = "VITE_TOKENS_PER_CHUNK"
+CHUNK_OVERLAP_ENV = "VITE_CHUNK_OVERLAP"
+CHUNKS_TO_COMBINE_ENV = "VITE_CHUNK_TO_COMBINE"
+
 DEFAULT_PROCESSED_ROOT = (
     Path(__file__).resolve().parents[2]
     / "preprocessing"
@@ -37,6 +45,111 @@ DEFAULT_POST_PROCESSING_TASKS: Sequence[str] = (
 
 class IngestionError(RuntimeError):
     """Raised when one of the ingestion steps reports a failure."""
+
+
+def _read_positive_int_from_env(env_var: str, fallback: int) -> int:
+    """Return a positive integer value from the environment or the fallback."""
+
+    raw_value = os.environ.get(env_var)
+    if not raw_value:
+        return fallback
+
+    try:
+        parsed = int(raw_value)
+    except (TypeError, ValueError):
+        LOGGER.warning(
+            "Environment variable %s=%r is not an integer; using %d instead",
+            env_var,
+            raw_value,
+            fallback,
+        )
+        return fallback
+
+    if parsed <= 0:
+        LOGGER.warning(
+            "Environment variable %s=%r must be greater than zero; using %d instead",
+            env_var,
+            raw_value,
+            fallback,
+        )
+        return fallback
+
+    return parsed
+
+
+def _resolve_chunk_defaults() -> tuple[int, int, int]:
+    """Load the UI-equivalent default chunk settings from the environment."""
+
+    default_chunk_size = _read_positive_int_from_env(
+        CHUNK_SIZE_ENV, DEFAULT_TOKEN_CHUNK_SIZE
+    )
+    default_overlap = _read_positive_int_from_env(
+        CHUNK_OVERLAP_ENV, DEFAULT_CHUNK_OVERLAP
+    )
+    default_chunks_to_combine = _read_positive_int_from_env(
+        CHUNKS_TO_COMBINE_ENV, DEFAULT_CHUNKS_TO_COMBINE
+    )
+    if default_overlap >= default_chunk_size:
+        adjusted_overlap = max(default_chunk_size - 1, 0)
+        LOGGER.warning(
+            "Chunk overlap %d must be smaller than the chunk size %d; using %d",
+            default_overlap,
+            default_chunk_size,
+            adjusted_overlap,
+        )
+        default_overlap = adjusted_overlap
+    return default_chunk_size, default_overlap, default_chunks_to_combine
+
+
+def _coerce_chunk_parameters(
+    token_chunk_size: Optional[int],
+    chunk_overlap: Optional[int],
+    chunks_to_combine: Optional[int],
+) -> tuple[int, int, int]:
+    """Return validated chunk settings with environment-aware defaults."""
+
+    default_chunk_size, default_overlap, default_combine = _resolve_chunk_defaults()
+
+    def _coerce(value: Optional[int], fallback: int, *, allow_zero: bool = False) -> int:
+        if value in (None, ""):
+            return fallback
+        try:
+            parsed = int(value)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            LOGGER.warning(
+                "Chunk parameter %r is not an integer; using %d instead", value, fallback
+            )
+            return fallback
+        if parsed < 0 or (parsed == 0 and not allow_zero):
+            LOGGER.warning(
+                "Chunk parameter %r must be %spositive; using %d instead",
+                value,
+                "" if allow_zero else "strictly ",
+                fallback,
+            )
+            return fallback
+        return parsed
+
+    resolved_chunk_size = _coerce(token_chunk_size, default_chunk_size)
+    resolved_overlap = _coerce(chunk_overlap, default_overlap, allow_zero=True)
+    resolved_combine = _coerce(chunks_to_combine, default_combine)
+
+    if resolved_overlap >= resolved_chunk_size:
+        LOGGER.warning(
+            "Chunk overlap %d must be smaller than the chunk size %d; using %d",
+            resolved_overlap,
+            resolved_chunk_size,
+            max(resolved_chunk_size - 1, 0),
+        )
+        resolved_overlap = max(resolved_chunk_size - 1, 0)
+
+    if resolved_combine <= 0:
+        LOGGER.warning(
+            "chunks_to_combine must be at least 1; using %d instead", default_combine
+        )
+        resolved_combine = max(default_combine, 1)
+
+    return resolved_chunk_size, resolved_overlap, resolved_combine
 
 
 def _coerce_optional(value: Optional[object]) -> Optional[str]:
@@ -202,19 +315,28 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--token-chunk-size",
         type=int,
         default=None,
-        help="Optional chunk size override passed to the /extract endpoint.",
+        help=(
+            "Optional chunk size override passed to the /extract endpoint. "
+            "Defaults to the UI configuration (VITE_TOKENS_PER_CHUNK, 100 if unset)."
+        ),
     )
     parser.add_argument(
         "--chunk-overlap",
         type=int,
         default=None,
-        help="Optional chunk overlap override passed to the /extract endpoint.",
+        help=(
+            "Optional chunk overlap override passed to the /extract endpoint. "
+            "Defaults to the UI configuration (VITE_CHUNK_OVERLAP, 20 if unset)."
+        ),
     )
     parser.add_argument(
         "--chunks-to-combine",
         type=int,
         default=None,
-        help="Optional number of chunks to combine during extraction.",
+        help=(
+            "Optional number of chunks to combine during extraction. "
+            "Defaults to the UI configuration (VITE_CHUNK_TO_COMBINE, 1 if unset)."
+        ),
     )
     parser.add_argument(
         "--retry-condition",
@@ -333,6 +455,12 @@ def ingest_project_via_api(
     missing = [name for name, value in required_fields.items() if not value]
     if missing:
         raise ValueError(f"Missing required connection information: {', '.join(missing)}")
+
+    (
+        token_chunk_size,
+        chunk_overlap,
+        chunks_to_combine,
+    ) = _coerce_chunk_parameters(token_chunk_size, chunk_overlap, chunks_to_combine)
 
     project_dir = processed_root / project_name / "markdown"
     markdown_files = discover_markdown_files(project_dir)

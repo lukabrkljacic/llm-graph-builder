@@ -22,6 +22,7 @@ import json
 from typing import List, Optional
 from google.oauth2.credentials import Credentials
 import os
+import logging
 from src.logger import CustomLogger
 from datetime import datetime, timezone
 import time
@@ -40,6 +41,113 @@ load_dotenv(override=True)
 logger = CustomLogger()
 CHUNK_DIR = os.path.join(os.path.dirname(__file__), "chunks")
 MERGED_DIR = os.path.join(os.path.dirname(__file__), "merged_files")
+
+DEFAULT_TOKEN_CHUNK_SIZE = 100
+DEFAULT_CHUNK_OVERLAP = 20
+DEFAULT_CHUNKS_TO_COMBINE = 1
+
+
+def _coerce_int(value, fallback, *, description: str, allow_zero: bool = False) -> int:
+    """Convert ``value`` to an integer, falling back to ``fallback`` when invalid."""
+
+    if value in (None, ""):
+        return fallback
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        logging.warning(
+            "%s %r is not a valid integer. Falling back to %d.",
+            description,
+            value,
+            fallback,
+        )
+        return fallback
+    if parsed < 0 or (parsed == 0 and not allow_zero):
+        logging.warning(
+            "%s must be %spositive. Falling back to %d.",
+            description,
+            "" if allow_zero else "strictly ",
+            fallback,
+        )
+        return fallback
+    return parsed
+
+
+def _read_chunk_defaults() -> tuple[int, int, int]:
+    """Return the UI-aligned default chunk settings."""
+
+    chunk_size = _coerce_int(
+        os.environ.get("VITE_TOKENS_PER_CHUNK"),
+        DEFAULT_TOKEN_CHUNK_SIZE,
+        description="Environment variable VITE_TOKENS_PER_CHUNK",
+    )
+    overlap = _coerce_int(
+        os.environ.get("VITE_CHUNK_OVERLAP"),
+        DEFAULT_CHUNK_OVERLAP,
+        description="Environment variable VITE_CHUNK_OVERLAP",
+        allow_zero=True,
+    )
+    chunks_to_combine = _coerce_int(
+        os.environ.get("VITE_CHUNK_TO_COMBINE"),
+        DEFAULT_CHUNKS_TO_COMBINE,
+        description="Environment variable VITE_CHUNK_TO_COMBINE",
+    )
+    if overlap >= chunk_size:
+        adjusted = max(chunk_size - 1, 0)
+        logging.warning(
+            "Chunk overlap %d must be smaller than chunk size %d. Falling back to %d.",
+            overlap,
+            chunk_size,
+            adjusted,
+        )
+        overlap = adjusted
+    return chunk_size, overlap, chunks_to_combine
+
+
+def resolve_chunk_settings(
+    token_chunk_size: Optional[int],
+    chunk_overlap: Optional[int],
+    chunks_to_combine: Optional[int],
+) -> tuple[int, int, int]:
+    """Resolve chunk settings to safe integers using environment defaults."""
+
+    default_chunk_size, default_overlap, default_combine = _read_chunk_defaults()
+
+    resolved_chunk_size = _coerce_int(
+        token_chunk_size,
+        default_chunk_size,
+        description="token_chunk_size",
+    )
+    resolved_overlap = _coerce_int(
+        chunk_overlap,
+        default_overlap,
+        description="chunk_overlap",
+        allow_zero=True,
+    )
+    resolved_combine = _coerce_int(
+        chunks_to_combine,
+        default_combine,
+        description="chunks_to_combine",
+    )
+
+    if resolved_overlap >= resolved_chunk_size:
+        adjusted = max(resolved_chunk_size - 1, 0)
+        logging.warning(
+            "chunk_overlap %d must be smaller than token_chunk_size %d. Falling back to %d.",
+            resolved_overlap,
+            resolved_chunk_size,
+            adjusted,
+        )
+        resolved_overlap = adjusted
+
+    if resolved_combine <= 0:
+        logging.warning(
+            "chunks_to_combine must be at least 1. Falling back to %d.",
+            max(default_combine, 1),
+        )
+        resolved_combine = max(default_combine, 1)
+
+    return resolved_chunk_size, resolved_overlap, resolved_combine
 
 def sanitize_filename(filename):
    """
@@ -236,7 +344,12 @@ async def extract_knowledge_graph_from_file(
     """
     try:
         start_time = time.time()
-        graph = create_graph_database_connection(uri, userName, password, database)   
+        (
+            token_chunk_size,
+            chunk_overlap,
+            chunks_to_combine,
+        ) = resolve_chunk_settings(token_chunk_size, chunk_overlap, chunks_to_combine)
+        graph = create_graph_database_connection(uri, userName, password, database)
         graphDb_data_Access = graphDBdataAccess(graph)
         if source_type == 'local file':
             file_name = sanitize_filename(file_name)

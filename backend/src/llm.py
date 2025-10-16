@@ -167,6 +167,20 @@ def get_llm_model_name(llm):
     return ""
 
 def get_combined_chunks(chunkId_chunkDoc_list, chunks_to_combine):
+    try:
+        chunks_to_combine = int(chunks_to_combine)
+    except (TypeError, ValueError):
+        logging.warning(
+            "chunks_to_combine value %r is invalid. Defaulting to 1.", chunks_to_combine
+        )
+        chunks_to_combine = 1
+
+    if chunks_to_combine <= 0:
+        logging.warning(
+            "chunks_to_combine must be a positive integer. Defaulting to 1."
+        )
+        chunks_to_combine = 1
+
     combined_chunk_document_list = []
     combined_chunks_page_content = [
         "".join(

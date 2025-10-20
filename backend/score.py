@@ -674,13 +674,13 @@ async def connect(uri=Form(None), userName=Form(None), password=Form(None), data
         return create_api_response(job_status, message=message, error=error_message)
 
 @app.post("/upload")
-async def upload_large_file_into_chunks(file:UploadFile = File(...), chunkNumber=Form(None), totalChunks=Form(None), 
-                                        originalname=Form(None), model=Form(None), uri=Form(None), userName=Form(None), 
-                                        password=Form(None), database=Form(None),email=Form(None)):
+async def upload_large_file_into_chunks(file:UploadFile = File(...), chunkNumber=Form(None), totalChunks=Form(None),
+                                        originalname=Form(None), model=Form(None), uri=Form(None), userName=Form(None),
+                                        password=Form(None), database=Form(None), project=Form(None), email=Form(None)):
     try:
         start = time.time()
         graph = create_graph_database_connection(uri, userName, password, database)
-        result = await asyncio.to_thread(upload_file, graph, model, file, chunkNumber, totalChunks, originalname, uri, CHUNK_DIR, MERGED_DIR)
+        result = await asyncio.to_thread(upload_file, graph, model, file, chunkNumber, totalChunks, originalname, uri, CHUNK_DIR, MERGED_DIR, project)
         end = time.time()
         elapsed_time = end - start
         if int(chunkNumber) == int(totalChunks):

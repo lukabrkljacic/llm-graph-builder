@@ -618,7 +618,7 @@ def merge_chunks_local(file_name, total_chunks, chunk_dir, merged_dir):
   
 
 
-def upload_file(graph, model, chunk, chunk_number:int, total_chunks:int, originalname, uri, chunk_dir, merged_dir):
+def upload_file(graph, model, chunk, chunk_number:int, total_chunks:int, originalname, uri, chunk_dir, merged_dir, project=None):
   
   gcs_file_cache = os.environ.get('GCS_FILE_CACHE')
   logging.info(f'gcs file cache: {gcs_file_cache}')
@@ -651,6 +651,7 @@ def upload_file(graph, model, chunk, chunk_number:int, total_chunks:int, origina
       obj_source_node.file_size = file_size
       obj_source_node.file_source = 'local file'
       obj_source_node.model = model
+      obj_source_node.project = project
       obj_source_node.created_at = datetime.now()
       obj_source_node.chunkNodeCount=0
       obj_source_node.chunkRelCount=0

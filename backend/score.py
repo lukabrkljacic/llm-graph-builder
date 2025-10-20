@@ -1,6 +1,7 @@
-from fastapi import FastAPI, File, UploadFile, Form, Request, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, Request, HTTPException, Query
 from fastapi_health import health
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, StreamingResponse
 from src.main import *
 from src.QA_integration import *
 from src.shared.common_fn import *
@@ -23,6 +24,10 @@ from typing import List, Optional
 from google.oauth2.credentials import Credentials
 import os
 import logging
+from urllib.parse import urlparse
+from botocore.exceptions import BotoCoreError, ClientError
+from google.cloud import storage
+import boto3
 from src.logger import CustomLogger
 from datetime import datetime, timezone
 import time
@@ -149,6 +154,17 @@ def resolve_chunk_settings(
 
     return resolved_chunk_size, resolved_overlap, resolved_combine
 
+def _normalize_user_filename(filename: str) -> str:
+    """Return a normalized representation of the user supplied filename."""
+
+    if filename is None:
+        raise ValueError("Filename is required")
+
+    normalized = filename.replace("\\", "/")
+    normalized = os.path.normpath(normalized)
+    return normalized
+
+
 def sanitize_filename(filename):
    """
    Sanitize the user-provided filename to prevent directory traversal and remove unsafe characters.
@@ -169,6 +185,109 @@ def validate_file_path(directory, filename):
    if not abs_file_path.startswith(abs_directory):
        raise ValueError("Invalid file path")
    return abs_file_path
+
+
+def _assert_safe_filename(filename: str) -> str:
+    """Validate that the provided filename cannot traverse directories."""
+
+    normalized = _normalize_user_filename(filename)
+    if normalized.startswith("..") or normalized.startswith("/"):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    if "/" in normalized:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    sanitized = sanitize_filename(filename)
+    if sanitized in {"", ".", ".."}:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    return sanitized
+
+
+def _stream_s3_file(bucket: str, key: str, download_name: str) -> StreamingResponse:
+    try:
+        s3_client = boto3.client("s3")
+        obj = s3_client.get_object(Bucket=bucket, Key=key)
+    except ClientError as exc:
+        error_code = exc.response.get("Error", {}).get("Code")
+        if error_code in {"NoSuchKey", "404"}:
+            raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=500, detail="Unable to download file") from exc
+    except BotoCoreError as exc:
+        raise HTTPException(status_code=500, detail="Unable to download file") from exc
+
+    body = obj.get("Body")
+    if body is None:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    def iterator():
+        try:
+            for chunk in iter(lambda: body.read(1024 * 1024), b""):
+                if chunk:
+                    yield chunk
+                else:
+                    break
+        finally:
+            body.close()
+
+    media_type = obj.get("ContentType") or "application/octet-stream"
+    headers = {"Content-Disposition": f'attachment; filename="{download_name}"'}
+    return StreamingResponse(iterator(), media_type=media_type, headers=headers)
+
+
+def _stream_gcs_file(bucket_name: str, blob_name: str, download_name: str) -> StreamingResponse:
+    try:
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(blob_name)
+        if not blob.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+        stream = blob.open("rb")
+    except HTTPException:
+        raise
+    except Exception as exc:  # pylint: disable=broad-except
+        raise HTTPException(status_code=500, detail="Unable to download file") from exc
+
+    def iterator():
+        try:
+            while True:
+                chunk = stream.read(1024 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            stream.close()
+
+    media_type = blob.content_type or "application/octet-stream"
+    headers = {"Content-Disposition": f'attachment; filename="{download_name}"'}
+    return StreamingResponse(iterator(), media_type=media_type, headers=headers)
+
+
+def _download_local_file(sanitized_filename: str) -> FileResponse:
+    try:
+        file_path = validate_file_path(MERGED_DIR, sanitized_filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid filename") from exc
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(file_path, filename=sanitized_filename)
+
+
+def _download_remote_file(storage_url: str, download_name: str) -> StreamingResponse:
+    parsed = urlparse(storage_url)
+    scheme = (parsed.scheme or "").lower()
+    if scheme == "s3":
+        bucket = parsed.netloc
+        key = parsed.path.lstrip("/")
+        if not bucket or not key:
+            raise HTTPException(status_code=400, detail="Invalid storage URL")
+        return _stream_s3_file(bucket, key, download_name)
+    if scheme in {"gs", "gcs"}:
+        bucket = parsed.netloc
+        blob_name = parsed.path.lstrip("/")
+        if not bucket or not blob_name:
+            raise HTTPException(status_code=400, detail="Invalid storage URL")
+        return _stream_gcs_file(bucket, blob_name, download_name)
+    raise HTTPException(status_code=400, detail="Unsupported storage provider")
 
 def healthy_condition():
     output = {"healthy": True}
@@ -226,6 +345,22 @@ if is_gemini_enabled:
 
 app.add_api_route("/health", health([healthy_condition, healthy]))
 
+
+
+@app.get("/download_source")
+async def download_source(
+    filename: str = Query(..., description="The name of the source file to download."),
+    storage_url: Optional[str] = Query(
+        default=None,
+        description="Optional remote storage URL for S3 or GCS sources.",
+    ),
+):
+    sanitized_filename = _assert_safe_filename(filename)
+
+    if storage_url:
+        return _download_remote_file(storage_url, sanitized_filename)
+
+    return _download_local_file(sanitized_filename)
 
 
 @app.post("/url/scan")

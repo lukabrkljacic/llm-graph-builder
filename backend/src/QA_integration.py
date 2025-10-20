@@ -2,6 +2,7 @@ import os
 import json
 import time
 import logging
+from urllib.parse import urlencode
 
 import threading
 from datetime import datetime
@@ -151,7 +152,7 @@ def get_sources_and_chunks(sources_used, docs):
             logging.error(f"Error processing document: {e}")
 
     result = {
-        'sources': sources_used,
+        'sources': list(sources_used),
         'chunkdetails': chunkdetails_list,
     }
     return result
@@ -222,12 +223,51 @@ def format_documents(documents, model,chat_mode_settings):
         
         except Exception as e:
             logging.error(f"Error formatting document: {e}")
-    
+
     return "\n\n".join(formatted_docs), sources,entities,global_communities
+
+
+def _is_remote_source_identifier(source: str) -> bool:
+    if not source:
+        return False
+    lowered = source.lower()
+    return lowered.startswith("s3://") or lowered.startswith("gs://") or lowered.startswith("gcs://")
+
+
+def _sanitize_source_label(source: str) -> str:
+    normalized = (source or "").replace("\\", "/").rstrip("/")
+    candidate = normalized.rsplit("/", 1)[-1] if normalized else source
+    sanitized = os.path.basename(candidate or "")
+    sanitized = os.path.normpath(sanitized)
+    if sanitized in {"", ".", ".."}:
+        sanitized = "source"
+    return sanitized
+
+
+def _build_download_url_for_source(source: str, sanitized_filename: str) -> str:
+    params = {"filename": sanitized_filename}
+    if _is_remote_source_identifier(source):
+        params["storage_url"] = source
+    return f"/download_source?{urlencode(params)}"
+
+
+def _format_source_entry(source: str) -> dict:
+    sanitized_filename = _sanitize_source_label(source)
+    download_url = _build_download_url_for_source(source, sanitized_filename)
+    display_label = sanitized_filename or source
+    entry = {
+        "label": display_label,
+        "sanitized_filename": sanitized_filename,
+        "download_url": download_url,
+    }
+    if source and source != display_label:
+        entry["source"] = source
+    return entry
+
 
 def process_documents(docs, question, messages, llm, model,chat_mode_settings):
     start_time = time.time()
-    
+
     try:
         formatted_docs, sources, entitydetails, communities = format_documents(docs, model,chat_mode_settings)
         
@@ -250,7 +290,11 @@ def process_documents(docs, question, messages, llm, model,chat_mode_settings):
             node_details["communitydetails"] = communities
         else:
             sources_and_chunks = get_sources_and_chunks(sources, docs)
-            result['sources'] = sources_and_chunks['sources']
+            formatted_sources = [
+                _format_source_entry(source)
+                for source in sorted(sources_and_chunks['sources'])
+            ]
+            result['sources'] = formatted_sources
             node_details["chunkdetails"] = sources_and_chunks["chunkdetails"]
             entities.update(entitydetails)
 

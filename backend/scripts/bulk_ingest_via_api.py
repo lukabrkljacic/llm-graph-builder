@@ -330,6 +330,8 @@ def upload_markdown(
     file_path: Path,
     auth_payload: Mapping[str, str],
     model: str,
+    *,
+    project: Optional[str] = None,
     chunk_number: int = 1,
     total_chunks: int = 1,
 ) -> Mapping[str, object]:
@@ -343,6 +345,7 @@ def upload_markdown(
         totalChunks=total_chunks,
         originalname=file_path.name,
         model=model,
+        project=project,
     )
 
     with file_path.open("rb") as fh:
@@ -632,7 +635,7 @@ def ingest_project_via_api(
 
     try:
         for file_path in markdown_files:
-            upload_markdown(session, base_url, file_path, auth_payload, model)
+            upload_markdown(session, base_url, file_path, auth_payload, model, project=project_name)
             extract_markdown(
                 session,
                 base_url,

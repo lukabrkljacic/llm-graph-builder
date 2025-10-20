@@ -43,8 +43,8 @@ class graphDBdataAccess:
             job_status = "New"
             logging.info(f"creating source node if does not exist in database {self.graph._database}")
             self.graph.query("""MERGE(d:Document {fileName :$fn}) SET d.fileSize = $fs, d.fileType = $ft ,
-                            d.status = $st, d.url = $url, d.awsAccessKeyId = $awsacc_key_id, 
-                            d.fileSource = $f_source, d.createdAt = $c_at, d.updatedAt = $u_at, 
+                            d.status = $st, d.url = $url, d.awsAccessKeyId = $awsacc_key_id,
+                            d.fileSource = $f_source, d.project = $project, d.createdAt = $c_at, d.updatedAt = $u_at,
                             d.processingTime = $pt, d.errorMessage = $e_message, d.nodeCount= $n_count, 
                             d.relationshipCount = $r_count, d.model= $model, d.gcsBucket=$gcs_bucket, 
                             d.gcsBucketFolder= $gcs_bucket_folder, d.language= $language,d.gcsProjectId= $gcs_project_id,
@@ -53,9 +53,9 @@ class graphDBdataAccess:
                             d.chunkNodeCount=$chunkNodeCount,d.chunkRelCount=$chunkRelCount,
                             d.entityNodeCount=$entityNodeCount,d.entityEntityRelCount=$entityEntityRelCount,
                             d.communityNodeCount=$communityNodeCount,d.communityRelCount=$communityRelCount""",
-                            {"fn":obj_source_node.file_name, "fs":obj_source_node.file_size, "ft":obj_source_node.file_type, "st":job_status, 
+                            {"fn":obj_source_node.file_name, "fs":obj_source_node.file_size, "ft":obj_source_node.file_type, "st":job_status,
                             "url":obj_source_node.url,
-                            "awsacc_key_id":obj_source_node.awsAccessKeyId, "f_source":obj_source_node.file_source, "c_at":obj_source_node.created_at,
+                            "awsacc_key_id":obj_source_node.awsAccessKeyId, "f_source":obj_source_node.file_source, "project":obj_source_node.project, "c_at":obj_source_node.created_at,
                             "u_at":obj_source_node.created_at, "pt":0, "e_message":'', "n_count":0, "r_count":0, "model":obj_source_node.model,
                             "gcs_bucket": obj_source_node.gcsBucket, "gcs_bucket_folder": obj_source_node.gcsBucketFolder, 
                             "language":obj_source_node.language, "gcs_project_id":obj_source_node.gcsProjectId,
@@ -106,6 +106,9 @@ class graphDBdataAccess:
 
             if obj_source_node.is_cancelled is not None:
                 params['is_cancelled'] = obj_source_node.is_cancelled
+
+            if obj_source_node.project is not None and obj_source_node.project != '':
+                params['project'] = obj_source_node.project
 
             if obj_source_node.processed_chunk is not None :
                 params['processed_chunk'] = obj_source_node.processed_chunk

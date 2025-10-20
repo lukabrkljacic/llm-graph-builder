@@ -5,6 +5,7 @@ class sourceNode:
     file_size:int=None
     file_type:str=None
     file_source:str=None
+    project:str=None
     status:str=None
     url:str=None
     gcsBucket:str=None

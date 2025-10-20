@@ -313,7 +313,7 @@ def _resolve_allowed_schema_values(
         resolved_relationships = default_relationships
     return resolved_nodes, resolved_relationships
 
-def _post_json(session: requests.Session, url: str, data: Mapping[str, str], files=None, timeout: int = 120) -> Mapping[str, object]:
+def _post_json(session: requests.Session, url: str, data: Mapping[str, str], files=None, timeout: int = 300) -> Mapping[str, object]:
     """Send a POST request and validate the API response structure."""
 
     response = session.post(url, data=data, files=files, timeout=timeout)

@@ -28,8 +28,27 @@ from dotenv import load_dotenv
 
 LOGGER = logging.getLogger(__name__)
 
+# Sets the default number of tokens per chunk when TokenTextSplitter slices each page into LangChain Document objects.
+# The resulting list length becomes the reported total_chunks that drive downstream processing loops.
+# Smaller chunks deliver finer-grained graph nodes and more targeted retrieval, but they 
+# multiply the number of chunks to index and process, increasing storage, embedding work, and LLM invocations.
+# Larger chunks mean fewer total segments and fewer ingestion/LLM calls, which speeds uploads and gives each request more context. 
+# The trade-off is coarser granularity for retrieval and metadata, plus a higher risk of exceeding model limits or mixing unrelated ideas in one chunk.
 DEFAULT_TOKEN_CHUNK_SIZE = 100
+
+# Specifies how many tokens consecutive chunks share.
+# The splitter enforces that the overlap stays below the chunk size and trims or zeroes invalid values.
+# Less or no overlap minimizes duplicate content and speeds ingestion, yet it risks losing cross-boundary context, 
+# potentially fragmenting entities or relationships that span chunks.
+# More overlap preserves context that straddles boundaries, which can improve entity extraction continuity, 
+# but it repeats text across chunks. That redundancy inflates the total token volume to embed/store and lengthens ingestion time.
 DEFAULT_CHUNK_OVERLAP = 20
+
+# Controls how many adjacent chunk documents are merged before the LLM turns them into graph documents.
+# The helper groups chunks in steps of this size and ensures the value is at least one.
+# Combining more chunks shrinks the number of LLM conversions and grants the model broader context, which can reduce latency 
+# and improve relationship extraction across chunks. The downside is a blurrier mapping between generated entities and their originating chunks, 
+# plus larger prompts that may hit context limits or blend unrelated topics.
 DEFAULT_CHUNKS_TO_COMBINE = 1
 
 CHUNK_SIZE_ENV = "VITE_TOKENS_PER_CHUNK"
@@ -442,7 +461,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Neo4j database to target (default: %(default)s)",
     )
     parser.add_argument(
-        "--token-chunk-size",
+        "token_chunk_size",
         type=int,
         default=None,
         help=(
@@ -451,7 +470,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--chunk-overlap",
+        "chunk_overlap",
         type=int,
         default=None,
         help=(
@@ -460,7 +479,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--chunks-to-combine",
+        "chunks_to_combine",
         type=int,
         default=None,
         help=(

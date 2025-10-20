@@ -94,7 +94,7 @@ services:
     container_name: neo4j
     environment:
       NEO4J_AUTH: neo4j/letmein123
-      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
       NEO4J_dbms_security_auth__enabled: "true"
       NEO4J_server_memory_heap_initial__size: 1G
       NEO4J_server_memory_heap_max__size: 1G

@@ -437,7 +437,7 @@ async def processing_source(uri, userName, password, database, model, file_name,
           folder_name = create_gcs_bucket_folder_name_hashed(uri, file_name)
           delete_file_from_gcs(BUCKET_UPLOAD,folder_name,file_name)
         else:
-          delete_uploaded_local_file(merged_file_path, file_name)  
+          delete_uploaded_local_file(merged_file_path, file_name)
       processing_source_func = time.time() - processing_source_start_time
       logging.info(f"Time taken to processing source function completed in {processing_source_func:.2f} seconds for file name {file_name}")  
       uri_latency["Processed_source"] = f'{processing_source_func:.2f}'
@@ -723,7 +723,7 @@ def manually_cancelled_job(graph, filenames, source_types, merged_dir, uri):
           delete_file_from_gcs(BUCKET_UPLOAD,folder_name,file_name)
       else:
         logging.info(f'Deleted File Path: {merged_file_path} and Deleted File Name : {file_name}')
-        delete_uploaded_local_file(merged_file_path,file_name)
+        delete_uploaded_local_file(merged_file_path,file_name, force=True)
   return "Cancelled the processing job successfully"
 
 def populate_graph_schema_from_text(text, model, is_schema_description_checked, is_local_storage):
@@ -766,4 +766,4 @@ def failed_file_process(uri,file_name, merged_file_path):
       delete_file_from_gcs(BUCKET_UPLOAD,folder_name,file_name)
   else:
       logging.info(f'Deleted File Path: {merged_file_path} and Deleted File Name : {file_name}')
-      delete_uploaded_local_file(merged_file_path,file_name)
+      delete_uploaded_local_file(merged_file_path,file_name, force=True)

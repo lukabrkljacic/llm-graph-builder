@@ -153,11 +153,38 @@ def execute_graph_query(graph: Neo4jGraph, query, params=None, max_retries=3, de
    logging.error("Failed to execute query after maximum retries due to persistent deadlocks.")
    raise RuntimeError("Query execution failed after multiple retries due to deadlock.")
 
-def delete_uploaded_local_file(merged_file_path, file_name):
+def _should_retain_local_source_files() -> bool:
+  """Return True when local source files should be kept after processing."""
+
+  retention_value = os.environ.get("RETAIN_LOCAL_SOURCE_FILES", "true")
+  return str(retention_value).strip().lower() in {"true", "1", "yes", "on"}
+
+
+def delete_uploaded_local_file(merged_file_path, file_name, *, force: bool = False):
+  """Remove an uploaded local file unless retention is enabled or forced to skip.
+
+  Args:
+      merged_file_path: Full path to the merged local file.
+      file_name: User visible file name used for logging.
+      force: When True, delete the file regardless of the retention setting.
+  """
+
   file_path = Path(merged_file_path)
+  retain_files = _should_retain_local_source_files()
+
+  if retain_files and not force:
+    logging.info(
+      "Preserving uploaded local file %s because RETAIN_LOCAL_SOURCE_FILES=%s",
+      file_name,
+      os.environ.get("RETAIN_LOCAL_SOURCE_FILES", "true"),
+    )
+    return
+
   if file_path.exists():
     file_path.unlink()
     logging.info(f'file {file_name} deleted successfully')
+  else:
+    logging.info(f'file {file_name} does not exist while attempting to delete')
    
 def close_db_connection(graph, api_name):
   if not graph._driver._closed:

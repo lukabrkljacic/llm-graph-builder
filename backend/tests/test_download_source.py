@@ -28,6 +28,7 @@ dummy_lh_module.__all__ = ["HuggingFaceEmbeddings"]
 sys.modules["langchain_huggingface"] = dummy_lh_module
 
 from score import app, MERGED_DIR
+from src.shared.common_fn import delete_uploaded_local_file
 
 
 @pytest.fixture()
@@ -61,3 +62,23 @@ def test_download_source_serves_local_file(client):
 def test_download_source_rejects_invalid_paths(client, filename):
     response = client.get("/download_source", params={"filename": filename})
     assert response.status_code == 400
+
+
+def test_delete_uploaded_local_file_retains_when_configured(monkeypatch, tmp_path):
+    monkeypatch.setenv("RETAIN_LOCAL_SOURCE_FILES", "true")
+    file_path = tmp_path / "retained.txt"
+    file_path.write_text("content")
+
+    delete_uploaded_local_file(str(file_path), "retained.txt")
+
+    assert file_path.exists()
+
+
+def test_delete_uploaded_local_file_respects_force(monkeypatch, tmp_path):
+    monkeypatch.setenv("RETAIN_LOCAL_SOURCE_FILES", "true")
+    file_path = tmp_path / "forced.txt"
+    file_path.write_text("content")
+
+    delete_uploaded_local_file(str(file_path), "forced.txt", force=True)
+
+    assert not file_path.exists()

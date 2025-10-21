@@ -112,6 +112,9 @@ const SourcesInfo: FC<SourcesProps> = ({ loading, mode, chunks, sources }) => {
             const label = getSourceLabel(sourceItem);
             const downloadHref = getDownloadHref(sourceItem, backendBaseUrl);
             const sanitizedFilename = isSourceEntry(sourceItem) ? sourceItem.sanitized_filename : undefined;
+            const linkHtmlAttributes = sanitizedFilename
+              ? { rel: 'noreferrer', download: sanitizedFilename }
+              : { rel: 'noreferrer' };
 
             const isHttpLink = typeof sourceUrl === 'string' &&
               (sourceUrl.startsWith('http://') || sourceUrl.startsWith('https://'));
@@ -230,8 +233,7 @@ const SourcesInfo: FC<SourcesProps> = ({ loading, mode, chunks, sources }) => {
                       href={downloadHref}
                       type='external'
                       target='_blank'
-                      rel='noreferrer'
-                      download={sanitizedFilename}
+                      htmlAttributes={linkHtmlAttributes}
                       className='whitespace-nowrap'
                     >
                       Download

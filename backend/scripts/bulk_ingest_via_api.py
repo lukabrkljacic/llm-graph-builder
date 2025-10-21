@@ -76,8 +76,10 @@ UPLOAD_ENDPOINT = "/upload"
 EXTRACT_ENDPOINT = "/extract"
 POST_PROCESSING_ENDPOINT = "/post_processing"
 DEFAULT_POST_PROCESSING_TASKS: Sequence[str] = (
-    "enable_hybrid_search_and_fulltext_search_in_bloom",
-    "materialize_text_chunk_similarities",
+    'materialize_text_chunk_similarities',
+    'enable_hybrid_search_and_fulltext_search_in_bloom',
+    'materialize_entity_similarities',
+    'enable_communities'
 )
 
 
@@ -514,14 +516,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--post-processing-tasks",
+        "post_processing_tasks",
         nargs="*",
         default=list(DEFAULT_POST_PROCESSING_TASKS),
         help="List of post-processing tasks to execute after extraction.",
     )
     parser.add_argument(
-        "--skip-post-processing",
-        action="store_true",
+        "skip_post_processing",
+        default=False,
+        #action="store_true",
         help="Skip calling the /post_processing endpoint.",
     )
     parser.add_argument(
@@ -669,7 +672,7 @@ def ingest_project_via_api(
                 allowed_nodes=allowed_nodes,
                 allowed_relationships=allowed_relationships,
             )
-
+        
         if not skip_post_processing and post_processing_tasks:
             run_post_processing(session, base_url, auth_payload, post_processing_tasks)
     finally:

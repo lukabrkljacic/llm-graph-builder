@@ -304,7 +304,7 @@ class graphDBdataAccess:
                 delete_file_from_gcs(BUCKET_UPLOAD,folder_name,file_name)
             else:
                 logging.info(f'Deleted File Path: {merged_file_path} and Deleted File Name : {file_name}')
-                delete_uploaded_local_file(merged_file_path,file_name)
+                delete_uploaded_local_file(merged_file_path,file_name, force=True)
                 
         query_to_delete_document="""
             MATCH (d:Document)

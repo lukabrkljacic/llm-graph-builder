@@ -24,6 +24,7 @@ import {
   ExtendedRelationship,
   Messages,
   ResponseMode,
+  SourceReference,
   metricstate,
   multimodelmetric,
   nodeDetailsProps,
@@ -67,7 +68,7 @@ const Chatbot: FC<ChatbotProps> = (props) => {
   const { model, chatModes, selectedRows, filesData } = useFileContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showInfoModal, setShowInfoModal] = useState<boolean>(false);
-  const [sourcesModal, setSourcesModal] = useState<string[]>([]);
+  const [sourcesModal, setSourcesModal] = useState<SourceReference[]>([]);
   const [modelModal, setModelModal] = useState<string>('');
   const [responseTime, setResponseTime] = useState<number>(0);
   const [tokensUsed, setTokensUsed] = useState<number>(0);

@@ -223,13 +223,22 @@ export interface Source {
   source_name: string;
   start_time?: string;
 }
+
+export interface SourceEntry {
+  label: string;
+  sanitized_filename: string;
+  download_url: string;
+  source?: string;
+}
+
+export type SourceReference = string | SourceEntry;
 export interface ChunkDetail {
   id: string;
   score: number;
 }
 export type ResponseMode = {
   message: string;
-  sources?: string[];
+  sources?: SourceReference[];
   model?: string;
   total_tokens?: number;
   response_time?: number;
@@ -488,7 +497,7 @@ export interface SourceListServerData {
 }
 
 export interface chatInfoMessage extends Partial<Messages> {
-  sources: string[];
+  sources: SourceReference[];
   model: string;
   response_time: number;
   total_tokens: number;
@@ -812,7 +821,7 @@ export interface DatabaseStatusProps {
 export type SourcesProps = {
   loading: boolean;
   mode: string;
-  sources: string[];
+  sources: SourceReference[];
   chunks: Chunk[];
 };
 

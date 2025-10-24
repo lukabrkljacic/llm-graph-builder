@@ -41,22 +41,28 @@ def get_llm(model: str):
     if env_value_stripped.startswith("{'") and env_value_stripped.endswith("'}") and '"' not in env_value_stripped:
         env_value_stripped = env_value_stripped.replace("'", '"')
 
-    try:
-        env_value_parsed = json.loads(env_value_stripped)
-        logging.info("PARSED: %s", env_value_parsed)
-    except json.JSONDecodeError as e:
-        # Helpful debug without leaking secrets: show length and first/last 40 chars
-        head = env_value_stripped[:40]
-        tail = env_value_stripped[-40:]
-        raise ValueError(
-            f"Failed to parse JSON from '{env_key}'. "
-            f"Length={len(env_value_stripped)}. Starts with: {head!r} ... ends with: {tail!r}. "
-            f"Original error: {e}"
-        ) from e
-    if not isinstance(env_value_parsed, dict):
-        raise TypeError(f"Value of '{env_key}' must be a JSON object, got {type(env_value_parsed).__name__}")
+    env_value_parsed = None
+    if env_value_stripped.startswith("{") and env_value_stripped.endswith("}"):
+        try:
+            env_value_parsed = json.loads(env_value_stripped)
+            if not isinstance(env_value_parsed, dict):
+                raise TypeError(
+                    f"Value of '{env_key}' must be a JSON object, got {type(env_value_parsed).__name__}"
+                )
+            logging.info("PARSED: %s", env_value_parsed)
+        except json.JSONDecodeError as e:
+            # Helpful debug without leaking secrets: show length and first/last 40 chars
+            head = env_value_stripped[:40]
+            tail = env_value_stripped[-40:]
+            raise ValueError(
+                f"Failed to parse JSON from '{env_key}'. "
+                f"Length={len(env_value_stripped)}. Starts with: {head!r} ... ends with: {tail!r}. "
+                f"Original error: {e}"
+            ) from e
 
     try:
+        config = env_value_parsed or {}
+
         if "gemini" in model:
             model_name = env_value
             credentials, project_id = google.auth.default()
@@ -75,15 +81,26 @@ def get_llm(model: str):
                 },
             )
         elif "openai" in model:
-            parts = [part.strip() for part in env_value.split(",") if part.strip()]
-            if len(parts) < 2:
-                raise ValueError(
-                    "OpenAI model configuration must include at least model name and API key"
-                )
+            model_name = config.get("model")
+            api_key = config.get("api_key")
+            base_url = config.get("base_url") or config.get("api_base")
 
-            model_name = env_value_parsed['model']
-            api_key = env_value_parsed['api_key']
+            if not model_name or not api_key:
+                parts = [part.strip() for part in env_value_stripped.split(",") if part.strip()]
+                if len(parts) < 2:
+                    raise ValueError(
+                        "OpenAI model configuration must include at least model name and API key"
+                    )
+                if not model_name:
+                    model_name = parts[0]
+                if not api_key:
+                    api_key = parts[1]
+                if not base_url and len(parts) > 2:
+                    base_url = parts[2]
+
             additional_kwargs = {"api_key": api_key, "model": model_name}
+            if base_url:
+                additional_kwargs["base_url"] = base_url
 
             if "o3-mini" in model:
                 llm = ChatOpenAI(**additional_kwargs)
